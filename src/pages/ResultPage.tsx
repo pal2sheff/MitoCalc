@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useMitoPassport } from '@/state/MitoPassportContext'
 import { Button } from '@/components/ui'
@@ -10,10 +11,17 @@ import { SafetyBlock } from '@/components/result/SafetyBlock'
 import { RedFlagsBlock } from '@/components/result/RedFlagsBlock'
 import { StudyBlock } from '@/components/result/StudyBlock'
 import { WorkupBlock } from '@/components/result/WorkupBlock'
+import { DynamicsBlock } from '@/components/result/DynamicsBlock'
+import { ConclusionBlock } from '@/components/result/ConclusionBlock'
+import { computeDynamics } from '@/state/dynamics'
 
 export function ResultPage() {
-  const { result } = useMitoPassport()
+  const { result, prevInputs, dynamicsContext } = useMitoPassport()
   const navigate = useNavigate()
+  const dynamics = useMemo(
+    () => (result ? computeDynamics(result, prevInputs, dynamicsContext) : null),
+    [result, prevInputs, dynamicsContext],
+  )
 
   if (!result) return <Navigate to="/input" replace />
 
@@ -32,8 +40,10 @@ export function ResultPage() {
       <IndicatorTable result={result} />
       <ContourCards result={result} />
       <PatternCards result={result} />
+      {dynamics && <DynamicsBlock dynamics={dynamics} />}
       <WorkupBlock result={result} />
       <NarrativeBlock result={result} />
+      <ConclusionBlock result={result} dynamics={dynamics} />
       <SafetyBlock result={result} />
     </div>
   )

@@ -303,6 +303,10 @@ export interface ClinicalContext extends PriorityContext {
   /** Клинические ситуации из таблицы 7.4. */
   situations: string[]
   cbc: CbcInputs
+  /** Дата исследования, свободный текст. */
+  studyDate?: string
+  /** Цель повторного исследования (таблица 8.3), id из controlGoals. */
+  controlGoal?: string
 }
 
 export interface PreanalyticItem {
@@ -402,6 +406,98 @@ export interface StudyContextResult {
     rule7Hints: { patternId: string; manualNumber: number; reasons: string[] }[]
     conclusionLine: string
   }
+}
+
+// ---------------------------------------------------------------------------
+// Этап 4: динамика (глава 8) и заключение (раздел 9.2)
+// ---------------------------------------------------------------------------
+
+export interface ControlGoalDefinition {
+  id: string
+  label: string
+  term: string
+}
+
+export interface ComparabilityItem {
+  id: string
+  label: string
+}
+
+export interface BetweenStudiesEvent {
+  id: string
+  label: string
+}
+
+/** Что врач вводит для сравнения двух отчётов. */
+export interface DynamicsContext {
+  /** Отмеченные условия сопоставимости (раздел 8.1). Неотмеченное — не воспроизведено. */
+  comparability: string[]
+  /** Что происходило между исследованиями (шаг 6 раздела 8.6). */
+  betweenEvents: string[]
+  previousDate?: string
+}
+
+export interface IndicatorChange {
+  id: IndicatorId
+  label: string
+  before: number
+  after: number
+  zoneBefore: string
+  zoneAfter: string
+  kind: 'zoneChange' | 'signChange' | 'withinZone'
+  /** К целевой зоне или от неё; null для изменений внутри зоны. */
+  direction: 'toward' | 'away' | null
+}
+
+export interface ContourChange {
+  id: string
+  label: string
+  stateBefore: string | null
+  stateAfter: string | null
+  direction: 'improved' | 'worsened' | 'same' | 'notComparable'
+  /** Согласованный сдвиг двух-трёх показателей контура без перехода зон. */
+  coordinatedShift: 'toward' | 'away' | null
+}
+
+export type DynamicsType =
+  | 'Улучшение'
+  | 'Адаптация'
+  | 'Компенсация'
+  | 'Перегрузка'
+  | 'Ухудшение'
+  | 'Восстановление после болезни'
+  | 'Временная реакция'
+  | 'Без значимой динамики'
+  | 'Смешанная динамика'
+
+export interface DynamicsResult {
+  comparable: boolean
+  notReproduced: string[]
+  notes: string[]
+  indicatorChanges: IndicatorChange[]
+  contourChanges: ContourChange[]
+  /** Три вопроса раздела 8.5. null — не оценено. */
+  checks: { compensationGrew: boolean | null; backgroundGrew: boolean | null; stressProbeImproved: boolean | null }
+  /** Сработавшие варианты «показатель улучшился, контур ухудшился» (8.5). */
+  traps: string[]
+  type: DynamicsType
+  meaning: string
+  tactics: string
+  /** Прогрессирующее ухудшение всех контуров при адекватном лечении (красный флаг 9.3). */
+  progressiveWorsening: boolean
+  conclusionText: string
+}
+
+export interface ForbiddenPhraseRule {
+  id: string
+  pattern: string
+  message: string
+}
+
+export interface ForbiddenPhraseHit {
+  id: string
+  match: string
+  message: string
 }
 
 export type SafetyFlagLevel = 'info' | 'warning' | 'critical'

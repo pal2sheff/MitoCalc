@@ -5,6 +5,7 @@ import { Button } from '@/components/ui'
 import { IndicatorField } from '@/components/IndicatorField'
 import { PanelSelector } from '@/components/context/PanelSelector'
 import { ClinicalContextForm } from '@/components/context/ClinicalContextForm'
+import { PreviousReportForm } from '@/components/context/PreviousReportForm'
 
 export function InputPage() {
   const navigate = useNavigate()
@@ -80,6 +81,7 @@ export function InputPage() {
       )}
 
       <ClinicalContextForm />
+      <PreviousReportForm />
 
       <div className="flex justify-end">
         <Button onClick={handleCalculate}>Рассчитать</Button>

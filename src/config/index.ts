@@ -1,4 +1,4 @@
-import type { CalculationConfig } from '@/engine'
+import type { CalculationConfig, DynamicsConfig } from '@/engine'
 import { block1Indicators, block2Indicators, indicatorList, indicators } from './indicators'
 import { referenceRanges } from './referenceRanges'
 import { contours } from './contours'
@@ -9,6 +9,8 @@ import { baseWorkupSet, baseWorkupExtension, indicatorWorkup, nlrBands, garkaviB
 import { patterns } from './patterns'
 import { dynamicSafetyRules, staticSafetyNotes } from './safetyRules'
 import { exampleInputs } from './example'
+import { betweenStudiesEvents, comparabilityItems, controlGoals, dynamicsTypeTexts, WITHIN_ZONE_SHIFT_PP } from './dynamics'
+import { conclusionChecklist, forbiddenPhrases } from './conclusion'
 
 export {
   indicators,
@@ -26,6 +28,19 @@ export {
   dynamicSafetyRules,
   staticSafetyNotes,
   exampleInputs,
+  betweenStudiesEvents,
+  comparabilityItems,
+  controlGoals,
+  conclusionChecklist,
+  forbiddenPhrases,
+}
+
+/** Конфигурация модуля динамики (глава 8). */
+export const dynamicsConfig: DynamicsConfig = {
+  comparabilityItems,
+  withinZoneShiftPp: WITHIN_ZONE_SHIFT_PP,
+  typeTexts: dynamicsTypeTexts,
+  contourMembers: Object.fromEntries(contours.map((c) => [c.id, [...c.keyIndicators, ...c.additionalIndicators]])),
 }
 
 /** Assembles the editable config layer into the shape `runCalculation` expects. */

@@ -1,5 +1,5 @@
 import type { CbcInputs, InfectionPeriod } from '@/engine'
-import { clinicalFindings, clinicalSituations, infectionPeriods, preanalyticItems } from '@/config'
+import { clinicalFindings, clinicalSituations, controlGoals, infectionPeriods, preanalyticItems } from '@/config'
 import { useMitoPassport } from '@/state/MitoPassportContext'
 import { Card } from '@/components/ui'
 
@@ -44,6 +44,36 @@ export function ClinicalContextForm() {
   return (
     <section className="mb-10 space-y-4">
       <h2 className="text-sm font-semibold tracking-wide text-ink-soft uppercase">Условия исследования и клинический контекст</h2>
+
+      <Card>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm text-ink">
+            <span className="mb-1 block font-medium">Дата исследования</span>
+            <input
+              type="text"
+              placeholder="например, 07.10.2026"
+              value={ctx.studyDate ?? ''}
+              onChange={(e) => updateContext({ studyDate: e.target.value || undefined })}
+              className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block text-sm text-ink">
+            <span className="mb-1 block font-medium">Цель повторного исследования (срок по разделу 8.3)</span>
+            <select
+              className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
+              value={ctx.controlGoal ?? ''}
+              onChange={(e) => updateContext({ controlGoal: e.target.value || undefined })}
+            >
+              <option value="">Не выбрана</option>
+              {controlGoals.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.label}: {g.term}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </Card>
 
       <Card>
         <h3 className="mb-1 font-medium text-ink">Условия забора и события предшествующих недель</h3>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import type { CalculationResult, ClinicalContext, IndicatorId, IndicatorInputs } from '@/engine'
+import type { CalculationResult, ClinicalContext, DynamicsContext, IndicatorId, IndicatorInputs } from '@/engine'
 import { emptyClinicalContext, runCalculation } from '@/engine'
 import { calculationConfig, exampleInputs } from '@/config'
 
@@ -15,6 +15,12 @@ interface MitoPassportContextValue {
   updateContext: (patch: Partial<ClinicalContext>) => void
   toggleInContext: (key: 'preanalytics' | 'clinicalFindings' | 'situations', id: string) => void
   toggleConfirmedSystemic: (patternId: string) => void
+  /** Предыдущий отчёт для оценки динамики. */
+  prevInputs: IndicatorInputs
+  setPrevValue: (id: IndicatorId, rawValue: string) => void
+  dynamicsContext: DynamicsContext
+  updateDynamics: (patch: Partial<DynamicsContext>) => void
+  toggleInDynamics: (key: 'comparability' | 'betweenEvents', id: string) => void
   toggleExplainedByEvent: (patternId: string) => void
 }
 
@@ -24,6 +30,26 @@ export function MitoPassportProvider({ children }: { children: ReactNode }) {
   const [inputs, setInputs] = useState<IndicatorInputs>({})
   const [result, setResult] = useState<CalculationResult | null>(null)
   const [priorityContext, setPriorityContext] = useState<ClinicalContext>(emptyClinicalContext)
+  const [prevInputs, setPrevInputs] = useState<IndicatorInputs>({})
+  const [dynamicsContext, setDynamicsContext] = useState<DynamicsContext>({ comparability: [], betweenEvents: [] })
+
+  function setPrevValue(id: IndicatorId, rawValue: string) {
+    setPrevInputs((prev) => {
+      const next = { ...prev }
+      const parsed = Number.parseFloat(rawValue.replace(',', '.'))
+      if (rawValue.trim() === '' || !Number.isFinite(parsed)) delete next[id]
+      else next[id] = parsed
+      return next
+    })
+  }
+
+  function updateDynamics(patch: Partial<DynamicsContext>) {
+    setDynamicsContext((prev) => ({ ...prev, ...patch }))
+  }
+
+  function toggleInDynamics(key: 'comparability' | 'betweenEvents', id: string) {
+    setDynamicsContext((prev) => ({ ...prev, [key]: prev[key].includes(id) ? prev[key].filter((x) => x !== id) : [...prev[key], id] }))
+  }
 
   function applyContext(next: ClinicalContext) {
     setPriorityContext(next)
@@ -73,6 +99,8 @@ export function MitoPassportProvider({ children }: { children: ReactNode }) {
     setInputs({})
     setResult(null)
     setPriorityContext(emptyClinicalContext)
+    setPrevInputs({})
+    setDynamicsContext({ comparability: [], betweenEvents: [] })
   }
 
   function calculate() {
@@ -91,6 +119,11 @@ export function MitoPassportProvider({ children }: { children: ReactNode }) {
     toggleInContext,
     toggleConfirmedSystemic,
     toggleExplainedByEvent,
+    prevInputs,
+    setPrevValue,
+    dynamicsContext,
+    updateDynamics,
+    toggleInDynamics,
   }
   return <MitoPassportContext.Provider value={value}>{children}</MitoPassportContext.Provider>
 }
