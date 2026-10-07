@@ -1,5 +1,12 @@
-import type { IndicatorCondition, IndicatorResult, PatternConfidence, PatternDefinition, PatternMatch } from './types'
-import { collectLeaves, conditionWeight, evaluateCondition, type IndicatorResultMap } from './conditions'
+import type {
+  IndicatorCondition,
+  IndicatorResult,
+  NotEvaluatedPattern,
+  PatternConfidence,
+  PatternDefinition,
+  PatternMatch,
+} from './types'
+import { collectLeaves, conditionWeight, evaluateCondition, evaluateConditionTri, type IndicatorResultMap } from './conditions'
 
 function confidenceFromRatio(ratio: number): PatternConfidence {
   if (ratio >= 0.85) return 'высокая'
@@ -39,14 +46,29 @@ function buildTriggeredIndicators(
  * satisfied supporting conditions) over all possible units. See
  * `src/config/patterns.ts` for how weight is assigned per pattern.
  */
-export function detectPatterns(indicatorResults: IndicatorResult[], patternDefs: PatternDefinition[]): PatternMatch[] {
+export interface PatternDetection {
+  matches: PatternMatch[]
+  /** Паттерны, которые нельзя ни подтвердить, ни исключить: не хватает измерений (правило 6). */
+  notEvaluated: NotEvaluatedPattern[]
+}
+
+export function detectPatterns(indicatorResults: IndicatorResult[], patternDefs: PatternDefinition[]): PatternDetection {
   const resultMap: IndicatorResultMap = {}
   for (const r of indicatorResults) resultMap[r.id] = r
 
   const matches: PatternMatch[] = []
+  const notEvaluated: NotEvaluatedPattern[] = []
 
   for (const pattern of patternDefs) {
-    if (!evaluateCondition(pattern.requiredConditions, resultMap)) continue
+    const status = evaluateConditionTri(pattern.requiredConditions, resultMap)
+    if (status === false) continue
+    if (status === null) {
+      const missing = [...new Set(collectLeaves(pattern.requiredConditions).map((l) => l.indicator))].filter(
+        (id) => !resultMap[id],
+      )
+      notEvaluated.push({ pattern, missingIndicatorIds: missing })
+      continue
+    }
 
     const requiredWeight = conditionWeight(pattern.requiredConditions)
     const supportingTotal = pattern.supportingConditions.length
@@ -65,11 +87,13 @@ export function detectPatterns(indicatorResults: IndicatorResult[], patternDefs:
     })
   }
 
-  return matches.sort((a, b) => {
+  matches.sort((a, b) => {
     if (CONFIDENCE_RANK[b.confidence] !== CONFIDENCE_RANK[a.confidence]) {
       return CONFIDENCE_RANK[b.confidence] - CONFIDENCE_RANK[a.confidence]
     }
     if (b.supportRatio !== a.supportRatio) return b.supportRatio - a.supportRatio
     return a.pattern.order - b.pattern.order
   })
+
+  return { matches, notEvaluated }
 }

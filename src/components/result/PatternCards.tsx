@@ -1,4 +1,5 @@
 import type { CalculationResult } from '@/engine'
+import { indicators } from '@/config'
 import { Accordion, Card, ConfidenceBadge } from '@/components/ui'
 
 export function PatternCards({ result }: { result: CalculationResult }) {
@@ -54,6 +55,27 @@ export function PatternCards({ result }: { result: CalculationResult }) {
             </Card>
           ))}
         </div>
+      )}
+
+      {result.notEvaluatedPatterns.length > 0 && (
+        <Card className="mt-3">
+          <h3 className="text-sm font-medium text-ink">Не оценены при данном объёме исследования</h3>
+          <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+            Для этих паттернов не хватает измеренных показателей. Они не подтверждены и не исключены, в заключении указывается,
+            что вопрос исследованием не закрыт.
+          </p>
+          <ul className="mt-3 space-y-1.5 text-sm text-ink">
+            {result.notEvaluatedPatterns.map((item) => (
+              <li key={item.pattern.id}>
+                {item.pattern.name}
+                <span className="text-xs text-ink-soft">
+                  {' '}
+                  (нет данных: {item.missingIndicatorIds.map((id) => indicators[id].shortLabel).join(', ')})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
     </div>
   )

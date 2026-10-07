@@ -115,6 +115,10 @@ export interface DomainResult {
   category: DomainCategory
   interpretation: string
   nextStep: string
+  /** false — ни один показатель домена не измерен: домен не оценён, а не «в норме». */
+  evaluated: boolean
+  /** Показатели домена, отсутствующие в отчёте (оценка неполная, если список не пуст). */
+  missingIndicatorIds: IndicatorId[]
 }
 
 /** A single leaf condition evaluated against one indicator's computed result. */
@@ -177,6 +181,12 @@ export interface PatternMatch {
   supportRatio: number
 }
 
+/** Паттерн, который при данном объёме исследования нельзя ни подтвердить, ни исключить. */
+export interface NotEvaluatedPattern {
+  pattern: PatternDefinition
+  missingIndicatorIds: IndicatorId[]
+}
+
 export type SafetyFlagLevel = 'info' | 'warning' | 'critical'
 
 export interface SafetyRuleCondition {
@@ -204,6 +214,8 @@ export interface CalculationResult {
   /** All triggered patterns, sorted by confidence desc, then order. */
   patternMatches: PatternMatch[]
   topPatterns: PatternMatch[]
+  /** Паттерны без оценки из-за неполного объёма исследования (правило 6 раздела 6.3). */
+  notEvaluatedPatterns: NotEvaluatedPattern[]
   leadDomain: DomainResult | null
   overallRiskLevel: OverallRiskLevel
   briefConclusion: string

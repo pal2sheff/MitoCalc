@@ -2,23 +2,65 @@ import type { ConditionNode, IndicatorCondition, IndicatorId, IndicatorResult } 
 
 export type IndicatorResultMap = Partial<Record<IndicatorId, IndicatorResult>>
 
+/**
+ * Трёхзначный результат условия:
+ *  true  — условие выполнено;
+ *  false — условие не выполнено по измеренным показателям;
+ *  null  — не оценено: для решения не хватает неизмеренного показателя.
+ *
+ * Неизмеренный показатель не равен «норме» и не равен «отклонению»
+ * (пособие, раздел 1.6 и правило 6 раздела 6.3).
+ */
+export type TriState = boolean | null
+
 function isLeaf(node: ConditionNode): node is IndicatorCondition {
   return 'indicator' in node
 }
 
-function evaluateLeaf(condition: IndicatorCondition, results: IndicatorResultMap): boolean {
+function evaluateLeaf(condition: IndicatorCondition, results: IndicatorResultMap): TriState {
   const result = results[condition.indicator]
-  if (!result) return false // indicator not entered -> cannot be satisfied
+  if (!result) return null
   if (condition.zoneIn && !condition.zoneIn.includes(result.zone.id)) return false
   if (condition.riskScoreMin !== undefined && result.riskScore < condition.riskScoreMin) return false
   return true
 }
 
-export function evaluateCondition(node: ConditionNode, results: IndicatorResultMap): boolean {
+/** Логика Клини: false в `all` побеждает неизвестность, true в `any` тоже. */
+export function evaluateConditionTri(node: ConditionNode, results: IndicatorResultMap): TriState {
   if (isLeaf(node)) return evaluateLeaf(node, results)
-  if ('all' in node) return node.all.every((child) => evaluateCondition(child, results))
-  if ('any' in node) return node.any.some((child) => evaluateCondition(child, results))
-  return node.none.every((child) => !evaluateCondition(child, results))
+
+  if ('all' in node) {
+    let unknown = false
+    for (const child of node.all) {
+      const v = evaluateConditionTri(child, results)
+      if (v === false) return false
+      if (v === null) unknown = true
+    }
+    return unknown ? null : true
+  }
+
+  if ('any' in node) {
+    let unknown = false
+    for (const child of node.any) {
+      const v = evaluateConditionTri(child, results)
+      if (v === true) return true
+      if (v === null) unknown = true
+    }
+    return unknown ? null : false
+  }
+
+  let unknown = false
+  for (const child of node.none) {
+    const v = evaluateConditionTri(child, results)
+    if (v === true) return false
+    if (v === null) unknown = true
+  }
+  return unknown ? null : true
+}
+
+/** Двузначная обёртка: true только при достоверно выполненном условии. */
+export function evaluateCondition(node: ConditionNode, results: IndicatorResultMap): boolean {
+  return evaluateConditionTri(node, results) === true
 }
 
 /** Flatten every leaf condition out of a (possibly nested) condition tree. */

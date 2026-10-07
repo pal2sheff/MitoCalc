@@ -1,5 +1,7 @@
 import type { CalculationResult } from '@/engine'
-import { Card, DomainCategoryBadge } from '@/components/ui'
+import { Badge, Card, DomainCategoryBadge } from '@/components/ui'
+
+const NOT_EVALUATED_STYLE = { text: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200', dot: 'bg-slate-400' }
 
 export function DomainCards({ result }: { result: CalculationResult }) {
   return (
@@ -10,7 +12,11 @@ export function DomainCards({ result }: { result: CalculationResult }) {
           <Card key={domain.id}>
             <div className="flex items-start justify-between gap-3">
               <h3 className="font-medium text-ink">{domain.label}</h3>
-              <DomainCategoryBadge category={domain.category} />
+              {domain.evaluated ? (
+                <DomainCategoryBadge category={domain.category} />
+              ) : (
+                <Badge style={NOT_EVALUATED_STYLE}>не оценён</Badge>
+              )}
             </div>
             <p className="mt-2 text-xs leading-relaxed text-ink-soft">{domain.description}</p>
             <p className="mt-3 text-sm leading-relaxed text-ink">{domain.interpretation}</p>

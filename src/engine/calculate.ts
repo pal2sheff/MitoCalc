@@ -44,11 +44,11 @@ export function runCalculation(inputs: IndicatorInputs, config: CalculationConfi
   }
 
   const domainResults = calculateDomains(indicatorResults, config.domains)
-  const patternMatches = detectPatterns(indicatorResults, config.patterns)
+  const { matches: patternMatches, notEvaluated: notEvaluatedPatterns } = detectPatterns(indicatorResults, config.patterns)
   const safetyFlags = detectSafetyFlags(indicatorResults, config.safetyRules)
 
   const topPatterns = patternMatches.slice(0, 3)
-  const leadDomain = domainResults.length > 0 && domainResults[0].avgRisk > 0 ? domainResults[0] : null
+  const leadDomain = domainResults.find((d) => d.evaluated && d.avgRisk > 0) ?? null
   const overallRiskLevel = calculateOverallRisk(domainResults, patternMatches, safetyFlags)
   const { briefConclusion, narrativeText } = generateClinicalSummary(overallRiskLevel, leadDomain, topPatterns)
 
@@ -57,6 +57,7 @@ export function runCalculation(inputs: IndicatorInputs, config: CalculationConfi
     domainResults,
     patternMatches,
     topPatterns,
+    notEvaluatedPatterns,
     leadDomain,
     overallRiskLevel,
     briefConclusion,

@@ -3,42 +3,59 @@ import type { ConditionNode, PatternDefinition } from '@/engine/types'
 /**
  * Editable medical config layer — pattern matrix (Level 3).
  *
- * Each pattern has:
- *  - requiredConditions: must ALL hold for the pattern to be considered
- *    triggered at all (a recursive all/any/none tree).
- *  - supportingConditions: each entry (leaf or group) that is also satisfied
- *    raises confidence. See `src/engine/patterns.ts` for the exact scoring.
+ * Формулы приведены к главе 6 пособия «Интерпретация митопаспорта»
+ * (2-е изд.), раздел 6.2. Обязательные компоненты формулы — в
+ * requiredConditions, компоненты со знаком ± — в supportingConditions.
  *
- * Convention: for any indicator, `riskScoreMin: 1` means "outside the
- * calm/optimal/neutral zone", i.e. any deviation regardless of direction —
- * every indicator in `referenceRanges.ts` has exactly one risk-0 zone, so
- * this is a safe generic "abnormal" check.
+ * Соглашения:
+ *  - «↓» и «↑» для базовых показателей — зоны ниже или выше целевой
+ *    (константы BELOW / ABOVE ниже);
+ *  - «отклонение» функциональной пробы — отрицательная область
+ *    (зоны 'neg' и 'negStrong', см. referenceRanges.ts);
+ *  - «выраженное» немитохондриальное дыхание — зона 'negStrong';
+ *  - если для решения не хватает измеренного показателя, паттерн получает
+ *    статус «не оценён» (правило 6 раздела 6.3), а не «не сработал».
+ *
+ * Номер паттерна по пособию указан в комментарии перед каждой записью.
+ * Паттерны 6 (НАДН-дефицит), 8 (комплекс I) и 10 (комплексы III–IV) пока
+ * не заведены.
  */
 
-const anyComplexAbnormal: ConditionNode = {
+const BELOW = ['low', 'severelyLow']
+const NADH_BELOW = ['lowAccumulation', 'borderlineLow']
+const NADH_ABOVE = ['elevated', 'sharplyElevated']
+const PROBE_DEVIATED = ['neg', 'negStrong']
+
+const oxidativeAbove: ConditionNode = { indicator: 'oxidativeStress', zoneIn: ['elevated', 'high'] }
+
+const anyComplexDeviated: ConditionNode = {
   any: [
-    { indicator: 'complexI', riskScoreMin: 1 },
-    { indicator: 'complexII', riskScoreMin: 1 },
-    { indicator: 'complexIII', riskScoreMin: 1 },
-    { indicator: 'complexIV', riskScoreMin: 1 },
-    { indicator: 'complexV', riskScoreMin: 1 },
+    { indicator: 'complexI', zoneIn: PROBE_DEVIATED },
+    { indicator: 'complexII', zoneIn: PROBE_DEVIATED },
+    { indicator: 'complexIII', zoneIn: PROBE_DEVIATED },
+    { indicator: 'complexIV', zoneIn: PROBE_DEVIATED },
+    { indicator: 'complexV', zoneIn: PROBE_DEVIATED },
   ],
 }
 
 export const patterns: PatternDefinition[] = [
+  // Пособие, паттерн 3
   {
     id: 'oxidativeMembrane',
     order: 1,
     name: 'Оксидативно-мембранный паттерн',
     requiredConditions: {
-      all: [
-        { indicator: 'oxidativeStress', zoneIn: ['high'] },
-        { indicator: 'mitoMembrane', riskScoreMin: 1 },
-      ],
+      all: [oxidativeAbove, { indicator: 'mitoMembrane', zoneIn: PROBE_DEVIATED }],
     },
     supportingConditions: [
-      { indicator: 'mitoActivity', zoneIn: ['low', 'severelyLow'] },
-      { any: [{ indicator: 'complexIII', riskScoreMin: 1 }, { indicator: 'complexIV', riskScoreMin: 1 }] },
+      {
+        any: [
+          { indicator: 'complexIII', zoneIn: PROBE_DEVIATED },
+          { indicator: 'complexIV', zoneIn: PROBE_DEVIATED },
+          { indicator: 'complexV', zoneIn: PROBE_DEVIATED },
+        ],
+      },
+      { indicator: 'mitoActivity', zoneIn: BELOW },
     ],
     pathophysiology:
       'Повреждение липидного бислоя и кардиолипина, нарушение протонного градиента, ROS-leak и снижение эффективности окислительного фосфорилирования (OXPHOS).',
@@ -69,17 +86,21 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Приоритет — стабилизация мембран и снижение повреждающих факторов (воспаление, гипоксия, токсическая нагрузка, дефицит антиоксидантной защиты); энергостимулирующие меры рассматривать только после этого этапа и с осторожностью.',
   },
+  // Пособие, паттерн 4
   {
     id: 'energyDeficit',
     order: 2,
-    name: 'Энергетический дефицит / низкая митохондриальная активность',
+    name: 'Энергетический дефицит, низкая митохондриальная активность',
     requiredConditions: {
       all: [
-        { indicator: 'mitoActivity', zoneIn: ['low', 'severelyLow'] },
-        { indicator: 'nadh', zoneIn: ['lowAccumulation', 'borderlineLow'] },
+        { indicator: 'mitoActivity', zoneIn: BELOW },
+        { indicator: 'nadh', zoneIn: NADH_BELOW },
       ],
     },
-    supportingConditions: [{ indicator: 'proteinMetabolism', zoneIn: ['low', 'severelyLow'] }],
+    supportingConditions: [
+      { indicator: 'proteinMetabolism', zoneIn: BELOW },
+      { any: [{ indicator: 'nst', zoneIn: BELOW }, { indicator: 'phagocytosis', zoneIn: BELOW }] },
+    ],
     pathophysiology:
       'Низкий пул функционально активных митохондрий, дефицит субстратов, сниженный анаболизм, дефицит белка/аминокислот, гиподинамия, постстрессовое истощение.',
     possibleCauses: [
@@ -104,14 +125,16 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Рассмотреть коррекцию сна, питания и белковой обеспеченности, восстановления и нагрузки, восполнение выявленных дефицитов; энерготропная поддержка — только как дополнительный слой после базовой коррекции.',
   },
+  // Пособие, паттерн 1
   {
     id: 'immuneExhaustion',
     order: 3,
-    name: 'Иммунное истощение / низкая фагоцитарная реакция',
-    requiredConditions: { indicator: 'phagocytosis', zoneIn: ['low', 'severelyLow'] },
+    name: 'Иммунное истощение, низкая фагоцитарная готовность',
+    requiredConditions: { indicator: 'phagocytosis', zoneIn: BELOW },
     supportingConditions: [
-      { indicator: 'nst', zoneIn: ['low', 'severelyLow'] },
-      { indicator: 'mitoActivity', zoneIn: ['low', 'severelyLow'] },
+      { indicator: 'nst', zoneIn: BELOW },
+      { indicator: 'mitoActivity', zoneIn: BELOW },
+      { indicator: 'proteinMetabolism', zoneIn: BELOW },
     ],
     pathophysiology:
       'Снижение реактивности врождённого иммунного ответа, дефицит энергетического обеспечения нейтрофилов, влияние кортизола, постинфекционная иммуносупрессия.',
@@ -136,18 +159,23 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Целесообразно сопоставить с нагрузкой, сном и стрессом; рассмотреть коррекцию восстановления, белка и выявленных дефицитов перед иммуномодулирующими вмешательствами.',
   },
+  // Пособие, паттерн 2
   {
     id: 'immuneHyperactivation',
     order: 4,
-    name: 'Иммунная гиперактивация / воспалительный паттерн',
+    name: 'Иммунная гиперактивация, воспалительный паттерн',
     requiredConditions: {
       all: [
-        { any: [{ indicator: 'phagocytosis', zoneIn: ['hyperactivation'] }, { indicator: 'nst', zoneIn: ['severeHyperactivation'] }] },
-        { indicator: 'calciumStress', zoneIn: ['stress'] },
-        { indicator: 'oxidativeStress', zoneIn: ['high'] },
+        {
+          any: [
+            { indicator: 'phagocytosis', zoneIn: ['elevated', 'hyperactivation'] },
+            { indicator: 'nst', zoneIn: ['elevated', 'severeHyperactivation'] },
+          ],
+        },
+        { indicator: 'calciumStress', zoneIn: ['activation', 'stress'] },
       ],
     },
-    supportingConditions: [],
+    supportingConditions: [oxidativeAbove],
     pathophysiology:
       'Активация врождённого иммунитета, ROS burst, риск NETosis, кальциевая перегрузка, усиленная воспалительная сигнализация.',
     possibleCauses: [
@@ -172,17 +200,16 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Приоритет — поиск и коррекция источника воспалительной/инфекционной активации; энергетические показатели переоценить после стихания острого процесса.',
   },
+  // Пособие, паттерн 5
   {
     id: 'ribosomalAnabolicDeficit',
     order: 5,
     name: 'Рибосомно-анаболический дефицит',
-    requiredConditions: {
-      all: [
-        { indicator: 'proteinMetabolism', zoneIn: ['low', 'severelyLow'] },
-        { indicator: 'mitoActivity', zoneIn: ['low', 'severelyLow'] },
-      ],
-    },
-    supportingConditions: [{ indicator: 'phagocytosis', zoneIn: ['low', 'severelyLow'] }],
+    requiredConditions: { indicator: 'proteinMetabolism', zoneIn: BELOW },
+    supportingConditions: [
+      { indicator: 'mitoActivity', zoneIn: BELOW },
+      { indicator: 'phagocytosis', zoneIn: BELOW },
+    ],
     pathophysiology:
       'Снижение внеядерной РНК и белкового синтеза, рибосомный стресс, дефицит аминокислот, переключение обмена на катаболизм.',
     possibleCauses: [
@@ -206,28 +233,24 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Рассмотреть оценку и коррекцию белковой обеспеченности, калорийности и нагрузочного режима до интерпретации показателей как энергетической недостаточности.',
   },
+  // Пособие, паттерн 7
   {
     id: 'nadhAccumulation',
     order: 6,
-    name: 'NADH-накопление / блок утилизации восстановительных эквивалентов',
+    name: 'Накопление НАДН, редокс-ограничение',
     requiredConditions: {
       all: [
-        { indicator: 'nadh', zoneIn: ['elevated', 'sharplyElevated'] },
+        { indicator: 'nadh', zoneIn: NADH_ABOVE },
         {
           any: [
-            { indicator: 'complexI', riskScoreMin: 1 },
-            { indicator: 'complexIII', riskScoreMin: 1 },
-            { indicator: 'complexIV', riskScoreMin: 1 },
+            { indicator: 'complexI', zoneIn: PROBE_DEVIATED },
+            { indicator: 'complexIII', zoneIn: PROBE_DEVIATED },
+            { indicator: 'complexIV', zoneIn: PROBE_DEVIATED },
           ],
         },
       ],
     },
-    supportingConditions: [
-      { indicator: 'oxidativeStress', zoneIn: ['moderate', 'high'] },
-      { indicator: 'complexI', riskScoreMin: 1 },
-      { indicator: 'complexIII', riskScoreMin: 1 },
-      { indicator: 'complexIV', riskScoreMin: 1 },
-    ],
+    supportingConditions: [oxidativeAbove, { indicator: 'mitoMembrane', zoneIn: PROBE_DEVIATED }],
     pathophysiology:
       'Затруднённое реокисление NADH до NAD+, блок электронного транспорта, редокс-застой с риском усиления продукции ROS.',
     possibleCauses: [
@@ -252,26 +275,26 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Сначала рассмотреть оценку гипоксии, токсической нагрузки и дефицитов кофакторов (B2/B3, CoQ10, железо); прямая энергостимуляция до этого — не приоритет.',
   },
+  // Пособие, паттерн 9
   {
     id: 'succinateComplexII',
     order: 7,
-    name: 'Сукцинат-зависимый паттерн (комплекс II)',
+    name: 'Комплекс II, сукцинат-зависимый вход',
     requiredConditions: {
       all: [
-        { indicator: 'complexII', riskScoreMin: 3 },
+        { indicator: 'complexII', zoneIn: PROBE_DEVIATED },
         {
           any: [
             { indicator: 'nadh', riskScoreMin: 1 },
-            { indicator: 'mitoMembrane', riskScoreMin: 1 },
-            { indicator: 'nonMitoRespiration', riskScoreMin: 1 },
+            { indicator: 'mitoMembrane', zoneIn: PROBE_DEVIATED },
+            { indicator: 'nonMitoRespiration', zoneIn: ['neg', 'negStrong'] },
           ],
         },
       ],
     },
     supportingConditions: [
-      { indicator: 'nadh', riskScoreMin: 1 },
-      { indicator: 'mitoMembrane', riskScoreMin: 1 },
-      { indicator: 'nonMitoRespiration', riskScoreMin: 1 },
+      { indicator: 'complexI', zoneIn: PROBE_DEVIATED },
+      { indicator: 'mitoMembrane', zoneIn: PROBE_DEVIATED },
     ],
     pathophysiology:
       'Нарушение сукцинатдегидрогеназы, дисбаланс сукцинат-фумарат, активация HIF-1α сигнализации, воспалительно-гипоксический метаболический сдвиг.',
@@ -296,17 +319,18 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Целесообразно прежде оценить гипоксический и воспалительный статус, обеспеченность B2 и железом; вопрос энергетической поддержки рассматривать после этой оценки.',
   },
+  // Пособие, паттерн 11
   {
     id: 'membraneAtpSynthase',
     order: 8,
     name: 'Мембранно-АТФ-синтазный паттерн',
     requiredConditions: {
       all: [
-        { indicator: 'mitoMembrane', riskScoreMin: 1 },
-        { indicator: 'mitoActivity', zoneIn: ['low', 'severelyLow'] },
+        { indicator: 'mitoMembrane', zoneIn: PROBE_DEVIATED },
+        { indicator: 'complexV', zoneIn: PROBE_DEVIATED },
       ],
     },
-    supportingConditions: [{ indicator: 'complexV', riskScoreMin: 1 }],
+    supportingConditions: [{ indicator: 'mitoActivity', zoneIn: BELOW }, oxidativeAbove],
     pathophysiology:
       'Недостаточный протонный градиент, нарушение мембранного потенциала (ΔΨ), сниженная эффективность АТФ-синтазы, мембранная нестабильность. Реакция комплекса V около нуля в этом контексте может отражать не норму, а функциональное «молчание» из-за отсутствия движущей силы градиента.',
     possibleCauses: [
@@ -329,17 +353,18 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Сначала стабилизация мембран (нутритивный статус, омега-3, антиоксидантная защита, снижение токсической нагрузки), затем — осторожная и постепенная поддержка энергетического обмена.',
   },
+  // Пособие, паттерн 12
   {
     id: 'nonMitoCompensation',
     order: 9,
-    name: 'Немитохондриальная компенсация / гликолитический сдвиг',
+    name: 'Немитохондриальная компенсация, альтернативный редокс-путь',
     requiredConditions: {
       all: [
-        { indicator: 'nonMitoRespiration', riskScoreMin: 3 },
-        { indicator: 'mitoActivity', zoneIn: ['low', 'severelyLow'] },
+        { indicator: 'nonMitoRespiration', zoneIn: ['negStrong'] },
+        { indicator: 'mitoActivity', zoneIn: BELOW },
       ],
     },
-    supportingConditions: [{ indicator: 'oxidativeStress', zoneIn: ['moderate', 'high'] }, anyComplexAbnormal],
+    supportingConditions: [oxidativeAbove, anyComplexDeviated],
     pathophysiology:
       'Смещение в сторону анаэробного гликолиза, цитоплазматическое окисление NADH, участие NADPH-оксидаз, ксантиноксидазы, ЛДГ-пути.',
     possibleCauses: [
@@ -362,16 +387,21 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Рассмотреть оценку гликемического и воспалительного профиля, режима нагрузок и восстановления прежде, чем интерпретировать находку как изолированную митохондриальную проблему.',
   },
+  // Пособие, паттерн 13
   {
     id: 'overtrainingAllostatic',
     order: 10,
-    name: 'Перетренированность / аллостатическая перегрузка',
-    requiredConditions: { indicator: 'phagocytosis', zoneIn: ['low', 'severelyLow'] },
+    name: 'Аллостатическая перегрузка',
+    requiredConditions: {
+      all: [
+        { indicator: 'phagocytosis', zoneIn: BELOW },
+        oxidativeAbove,
+        { indicator: 'proteinMetabolism', zoneIn: BELOW },
+      ],
+    },
     supportingConditions: [
-      { indicator: 'nst', zoneIn: ['low', 'severelyLow'] },
-      { indicator: 'oxidativeStress', zoneIn: ['moderate', 'high'] },
-      { indicator: 'proteinMetabolism', zoneIn: ['low', 'severelyLow'] },
-      { indicator: 'mitoActivity', zoneIn: ['low', 'severelyLow'] },
+      { indicator: 'nst', zoneIn: BELOW },
+      { indicator: 'mitoActivity', zoneIn: BELOW },
     ],
     pathophysiology:
       'Кортизол-зависимое подавление иммунитета, катаболическая направленность обмена, истощение субстратов, сниженное восстановление, рост окислительной нагрузки.',
@@ -395,14 +425,15 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Рассмотреть снижение/коррекцию тренировочной нагрузки, восстановление сна и питания как приоритет перед любыми другими вмешательствами; повторная оценка после периода разгрузки.',
   },
+  // Пособие, паттерн 14
   {
     id: 'postInfectiousInflammatory',
     order: 11,
-    name: 'Постинфекционный / хронически воспалительный митохондриальный паттерн',
+    name: 'Постинфекционный и хронически воспалительный паттерн',
     requiredConditions: {
       all: [
-        { indicator: 'oxidativeStress', zoneIn: ['moderate', 'high'] },
-        { indicator: 'mitoActivity', zoneIn: ['low', 'severelyLow'] },
+        oxidativeAbove,
+        { indicator: 'mitoActivity', zoneIn: BELOW },
         {
           any: [
             { indicator: 'phagocytosis', riskScoreMin: 1 },
@@ -410,10 +441,9 @@ export const patterns: PatternDefinition[] = [
             { indicator: 'calciumStress', riskScoreMin: 1 },
           ],
         },
-        anyComplexAbnormal,
       ],
     },
-    supportingConditions: [{ indicator: 'nadh', riskScoreMin: 1 }],
+    supportingConditions: [anyComplexDeviated],
     pathophysiology:
       'Иммунно-метаболическое торможение, влияние ROS и цитокинов на OXPHOS, снижение биогенеза митохондрий.',
     possibleCauses: [
@@ -434,16 +464,22 @@ export const patterns: PatternDefinition[] = [
     cautiousStrategy:
       'Приоритет — поиск и коррекция очага воспаления/инфекции, поддержка сна и питания; энергетическую интерпретацию пересмотреть после контроля воспалительного процесса.',
   },
+  // Пособие, паттерн 15
   {
     id: 'adaptedTrained',
     order: 12,
-    name: 'Относительно тренированный / адаптированный паттерн',
+    name: 'Адаптированный профиль',
     requiredConditions: {
       all: [
-        { indicator: 'mitoActivity', zoneIn: ['working', 'high'] },
-        { indicator: 'oxidativeStress', zoneIn: ['low', 'moderate'] },
-        { indicator: 'nonMitoRespiration', zoneIn: ['neutral', 'mildIncrease'] },
-        { indicator: 'stressReaction', zoneIn: ['neutral', 'mildIncrease', 'mildDecrease'] },
+        { indicator: 'mitoActivity', zoneIn: ['target', 'high'] },
+        { indicator: 'nadh', zoneIn: ['target'] },
+        { indicator: 'oxidativeStress', zoneIn: ['target'] },
+        { indicator: 'calciumStress', zoneIn: ['target'] },
+        { indicator: 'phagocytosis', zoneIn: ['target'] },
+        { indicator: 'nst', zoneIn: ['target'] },
+        { indicator: 'proteinMetabolism', zoneIn: ['target', 'elevated'] },
+        { indicator: 'stressReaction', zoneIn: ['pos', 'posStrong'] },
+        { indicator: 'nonMitoRespiration', zoneIn: ['neg', 'neutral'] },
       ],
     },
     supportingConditions: [],
