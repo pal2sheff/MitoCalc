@@ -6,10 +6,11 @@ import { IndicatorField } from '@/components/IndicatorField'
 import { PanelSelector } from '@/components/context/PanelSelector'
 import { ClinicalContextForm } from '@/components/context/ClinicalContextForm'
 import { PreviousReportForm } from '@/components/context/PreviousReportForm'
+import { PdfImport } from '@/components/context/PdfImport'
 
 export function InputPage() {
   const navigate = useNavigate()
-  const { inputs, setValue, loadExample, clearForm, calculate, priorityContext, prevInputs } = useMitoPassport()
+  const { inputs, setValue, loadExample, clearForm, calculate, priorityContext, prevInputs, importedIds } = useMitoPassport()
 
   const panel = panels.find((p) => p.id === priorityContext.panel)
   const visible = (id: string) => !panel || panel.indicatorIds.some((x) => x === id) || panel.optionalIndicatorIds.some((x) => x === id)
@@ -41,6 +42,10 @@ export function InputPage() {
         </div>
       </div>
 
+      <div className="mb-6">
+        <PdfImport />
+      </div>
+
       <div className="mb-8">
         <PanelSelector />
       </div>
@@ -49,7 +54,7 @@ export function InputPage() {
         <Section title="Базовые показатели" aside="доля клеток, 0–100 %">
           <div className="bg-paper px-4 sm:px-5">
             {block1.map((d) => (
-              <IndicatorField key={d.id} definition={d} value={inputs[d.id]} onChange={(raw) => setValue(d.id, raw)} />
+              <IndicatorField key={d.id} definition={d} value={inputs[d.id]} imported={importedIds.includes(d.id)} onChange={(raw) => setValue(d.id, raw)} />
             ))}
           </div>
         </Section>
@@ -58,7 +63,7 @@ export function InputPage() {
           <Section title="Функциональные пробы" aside="ΔНАДН, вводите число, а не стрелку бланка">
             <div className="bg-paper px-4 sm:px-5">
               {block2.map((d) => (
-                <IndicatorField key={d.id} definition={d} value={inputs[d.id]} onChange={(raw) => setValue(d.id, raw)} />
+                <IndicatorField key={d.id} definition={d} value={inputs[d.id]} imported={importedIds.includes(d.id)} onChange={(raw) => setValue(d.id, raw)} />
               ))}
             </div>
             <Accordion className="mt-3" summary="Как читается знак пробы">
@@ -90,7 +95,10 @@ export function InputPage() {
 
       <div className="no-print fixed inset-x-0 bottom-0 border-t border-line bg-paper/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-          <span className="text-sm text-ink-soft">Введено показателей: {entered}</span>
+          <span className="text-sm text-ink-soft">
+            Введено показателей: {entered}
+            {importedIds.length > 0 && <span className="hidden sm:inline"> · из PDF: {importedIds.length}, сверьте с бланком</span>}
+          </span>
           <Button onClick={handleCalculate} disabled={entered === 0}>
             Рассчитать
           </Button>

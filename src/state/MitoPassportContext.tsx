@@ -10,6 +10,10 @@ interface MitoPassportContextValue {
   loadExample: () => void
   clearForm: () => void
   calculate: () => void
+  /** Внести значения, распознанные из PDF: заменяет текущий ввод. */
+  applyImport: (values: IndicatorInputs, date?: string) => void
+  /** Показатели, внесённые из PDF и ещё не исправленные вручную. */
+  importedIds: IndicatorId[]
   /** Клинический контекст: комплектация, условия забора, анамнез, ОАК, отметки правил 7 и 8. */
   priorityContext: ClinicalContext
   updateContext: (patch: Partial<ClinicalContext>) => void
@@ -30,6 +34,7 @@ export function MitoPassportProvider({ children }: { children: ReactNode }) {
   const [inputs, setInputs] = useState<IndicatorInputs>({})
   const [result, setResult] = useState<CalculationResult | null>(null)
   const [priorityContext, setPriorityContext] = useState<ClinicalContext>(emptyClinicalContext)
+  const [importedIds, setImportedIds] = useState<IndicatorId[]>([])
   const [prevInputs, setPrevInputs] = useState<IndicatorInputs>({})
   const [dynamicsContext, setDynamicsContext] = useState<DynamicsContext>({ comparability: [], betweenEvents: [] })
 
@@ -76,7 +81,15 @@ export function MitoPassportProvider({ children }: { children: ReactNode }) {
     applyContext({ ...priorityContext, explainedByEvent: toggle(priorityContext.explainedByEvent, patternId) })
   }
 
+  function applyImport(values: IndicatorInputs, date?: string) {
+    setInputs(values)
+    setImportedIds(Object.keys(values) as IndicatorId[])
+    setResult(null)
+    setPriorityContext({ ...emptyClinicalContext, studyDate: date })
+  }
+
   function setValue(id: IndicatorId, rawValue: string) {
+    setImportedIds((prev) => prev.filter((x) => x !== id))
     setInputs((prev) => {
       if (rawValue.trim() === '') {
         const next = { ...prev }
@@ -93,12 +106,14 @@ export function MitoPassportProvider({ children }: { children: ReactNode }) {
     setInputs(exampleInputs)
     setResult(null)
     setPriorityContext(emptyClinicalContext)
+    setImportedIds([])
   }
 
   function clearForm() {
     setInputs({})
     setResult(null)
     setPriorityContext(emptyClinicalContext)
+    setImportedIds([])
     setPrevInputs({})
     setDynamicsContext({ comparability: [], betweenEvents: [] })
   }
@@ -114,6 +129,8 @@ export function MitoPassportProvider({ children }: { children: ReactNode }) {
     loadExample,
     clearForm,
     calculate,
+    applyImport,
+    importedIds,
     priorityContext,
     updateContext,
     toggleInContext,

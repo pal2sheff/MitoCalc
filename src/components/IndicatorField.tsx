@@ -7,10 +7,12 @@ import { ZONE_COLOR_STYLES, ZoneScale } from '@/components/ui'
 export function IndicatorField({
   definition,
   value,
+  imported = false,
   onChange,
 }: {
   definition: IndicatorDefinition
   value: number | undefined
+  imported?: boolean
   onChange: (rawValue: string) => void
 }) {
   const normalized = normalizeIndicator(value, definition)
@@ -32,7 +34,8 @@ export function IndicatorField({
           step={definition.step}
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded border border-line bg-paper py-1.5 pr-7 pl-2.5 text-right text-sm text-ink focus:border-brand focus:outline-none"
+          className={`w-full rounded border py-1.5 pr-7 pl-2.5 text-right text-sm text-ink focus:border-brand focus:outline-none ${imported ? 'border-[#aebde3] bg-brand-tint' : 'border-line bg-paper'}`}
+          title={imported ? 'Внесено из PDF' : undefined}
           aria-describedby={`${definition.id}-zone`}
         />
         <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-xs text-ink-faint">
