@@ -19,6 +19,11 @@ export function HomePage() {
         <Button className="mt-8 w-full sm:w-auto" onClick={() => navigate('/input')}>
           Начать интерпретацию
         </Button>
+        <p className="mt-4">
+          <button type="button" className="text-xs text-ink-soft underline" onClick={() => navigate('/decisions')}>
+            Черновые решения калькулятора для согласования
+          </button>
+        </p>
       </Card>
     </div>
   )

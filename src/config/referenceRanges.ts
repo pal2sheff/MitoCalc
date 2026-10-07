@@ -1,4 +1,5 @@
 import type { IndicatorId, IndicatorReferenceConfig, ReferenceZone } from '@/engine/types'
+import { PROBE_NEUTRAL_LIMIT, PROBE_STRONG_LIMIT } from './calibration'
 
 /**
  * Editable medical config layer — reference zones per indicator.
@@ -34,9 +35,6 @@ import type { IndicatorId, IndicatorReferenceConfig, ReferenceZone } from '@/eng
  * 'negStrong' | 'neg' | 'neutral' | 'pos' | 'posStrong'.
  */
 
-/** Черновые пороги проб. Менять здесь — изменится у всех проб сразу. */
-const PROBE_NEUTRAL_LIMIT = 15
-const PROBE_STRONG_LIMIT = 40
 
 interface ProbeTexts {
   negStrong: [string, string]
@@ -112,16 +110,16 @@ export const referenceRanges: Record<IndicatorId, IndicatorReferenceConfig> = {
     zones: [
       { id: 'severelyLow', label: 'Значительно снижен', riskScore: 3, min: 0, max: 19.9, meaning: 'Захват частиц отсутствует или значительно снижен.' },
       { id: 'low', label: 'Снижен', riskScore: 2, min: 20, max: 39.9, meaning: 'Сниженная фагоцитарная готовность.' },
-      { id: 'target', label: 'Целевая зона', riskScore: 0, min: 40, max: 59.9, meaning: 'Адекватная фагоцитарная реакция.' },
-      { id: 'elevated', label: 'Повышен', riskScore: 2, min: 60, max: 79.9, meaning: 'Повышенная фагоцитарная реакция.' },
+      { id: 'target', label: 'Целевая зона', riskScore: 0, min: 40, max: 59.9, meaning: 'Адекватная фагоцитарная реакция.', blankNote: 'Бланк: «активированный иммунитет». Зона целевая, вывод об активации из неё не следует.' },
+      { id: 'elevated', label: 'Повышен', riskScore: 2, min: 60, max: 79.9, meaning: 'Повышенная фагоцитарная реакция.', blankNote: 'Бланк: «риск аутоагрессии». Показатель аутоиммунный риск не оценивает.' },
       { id: 'hyperactivation', label: 'Значительно повышен', riskScore: 3, min: 80, max: 100, meaning: 'Выраженная фагоцитарная активация.' },
     ],
   },
   nst: {
     indicatorId: 'nst',
     zones: [
-      { id: 'severelyLow', label: 'Значительно снижен', riskScore: 3, min: 0, max: 9.9, meaning: 'Кислородзависимый ответ фагоцитов значительно снижен.' },
-      { id: 'low', label: 'Снижен', riskScore: 2, min: 10, max: 29.9, meaning: 'Сниженная способность к кислородному взрыву.' },
+      { id: 'severelyLow', label: 'Значительно снижен', riskScore: 3, min: 0, max: 9.9, meaning: 'Кислородзависимый ответ фагоцитов значительно снижен.', blankNote: 'Бланк: «снижена доля пероксисом, тканевая гипоксия». Тест отражает работу НАДФН-оксидазы фагоцита, а не пероксисомы.' },
+      { id: 'low', label: 'Снижен', riskScore: 2, min: 10, max: 29.9, meaning: 'Сниженная способность к кислородному взрыву.', blankNote: 'Бланк: «нарушение лизосомальной функции». Тест отражает кислородный взрыв (НАДФН-оксидаза), а не лизосомы.' },
       { id: 'target', label: 'Целевая зона', riskScore: 0, min: 30, max: 59.9, meaning: 'Кислородзависимый ответ в целевой зоне.' },
       { id: 'elevated', label: 'Повышен', riskScore: 2, min: 60, max: 79.9, meaning: 'Усиленный кислородный взрыв.' },
       { id: 'severeHyperactivation', label: 'Значительно повышен', riskScore: 3, min: 80, max: 100, meaning: 'Выраженная активация кислородного взрыва.' },
@@ -139,36 +137,36 @@ export const referenceRanges: Record<IndicatorId, IndicatorReferenceConfig> = {
     indicatorId: 'calciumStress',
     zones: [
       { id: 'target', label: 'Целевая зона', riskScore: 0, min: 0, max: 29.9, meaning: 'Кальциевый обмен в целевой зоне.' },
-      { id: 'activation', label: 'Повышен', riskScore: 2, min: 30, max: 49.9, meaning: 'Повышенная доля клеток с накоплением внутриклеточного кальция.' },
-      { id: 'stress', label: 'Выраженно повышен', riskScore: 3, min: 50, max: 100, meaning: 'Выраженная кальциевая нагрузка на клетки.' },
+      { id: 'activation', label: 'Повышен', riskScore: 2, min: 30, max: 49.9, meaning: 'Повышенная доля клеток с накоплением внутриклеточного кальция.', firstAction: 'Оценить воспалительный и стрессовый фон.' },
+      { id: 'stress', label: 'Выраженно повышен', riskScore: 3, min: 50, max: 100, meaning: 'Выраженная кальциевая нагрузка на клетки.', firstAction: 'Искать активное воспаление, инфекцию, гипоксию, токсическое воздействие.' },
     ],
   },
   proteinMetabolism: {
     indicatorId: 'proteinMetabolism',
     zones: [
-      { id: 'severelyLow', label: 'Значительно снижен', riskScore: 3, min: 0, max: 19.9, meaning: 'Значительно снижена доля клеток с активной внеядерной РНК.' },
-      { id: 'low', label: 'Снижен', riskScore: 2, min: 20, max: 59.9, meaning: 'Снижены пластические процессы. Причина по значению не устанавливается.' },
+      { id: 'severelyLow', label: 'Значительно снижен', riskScore: 3, min: 0, max: 19.9, meaning: 'Значительно снижена доля клеток с активной внеядерной РНК.', firstAction: 'Оценить нутритивный статус, катаболическое состояние, тяжесть основного заболевания.' },
+      { id: 'low', label: 'Снижен', riskScore: 2, min: 20, max: 59.9, meaning: 'Снижены пластические процессы. Причина по значению не устанавливается.', firstAction: 'Оценить белковое обеспечение, дефициты, воспаление, энергетический контур.', blankNote: 'Бланк: «дефицит незаменимых аминокислот, голодание». Причина названа как установленная; показатель отражает рибосомальную активность лейкоцитов и бывает снижен при нормальных общем белке и альбумине.' },
       { id: 'target', label: 'Целевая зона', riskScore: 0, min: 60, max: 79.9, meaning: 'Пластические процессы в целевой зоне.' },
-      { id: 'elevated', label: 'Повышен', riskScore: 1, min: 80, max: 100, meaning: 'Высокая синтетическая активность. Читать вместе с оксидативным и кальциевым стрессом.' },
+      { id: 'elevated', label: 'Повышен', riskScore: 1, min: 80, max: 100, meaning: 'Высокая синтетическая активность. Читать вместе с оксидативным и кальциевым стрессом.', firstAction: 'Оценить иммунную активацию, воспаление, пролиферативные состояния.' },
     ],
   },
   mitoActivity: {
     indicatorId: 'mitoActivity',
     zones: [
-      { id: 'severelyLow', label: 'Значительно снижена', riskScore: 3, min: 0, max: 9.9, meaning: 'Конгломерат активных митохондрий практически не выявляется.' },
-      { id: 'low', label: 'Снижена', riskScore: 2, min: 10, max: 29.9, meaning: 'Снижена доля гранулоцитов с активным конгломератом митохондрий.' },
+      { id: 'severelyLow', label: 'Значительно снижена', riskScore: 3, min: 0, max: 9.9, meaning: 'Конгломерат активных митохондрий практически не выявляется.', firstAction: 'Искать системную причину: гипоксия, анемия, тяжёлое заболевание, лекарственное воздействие.' },
+      { id: 'low', label: 'Снижена', riskScore: 2, min: 10, max: 29.9, meaning: 'Снижена доля гранулоцитов с активным конгломератом митохондрий.', firstAction: 'Оценить дефициты, воспаление, метаболический статус, гиподинамию, препараты.' },
       { id: 'target', label: 'Целевая зона', riskScore: 0, min: 30, max: 79.9, meaning: 'Доля клеток с активными митохондриями в целевой зоне.' },
-      { id: 'high', label: 'Выше целевой', riskScore: 1, min: 80, max: 100, meaning: 'Высокая доля клеток с активными митохондриями. Читать вместе с оксидативным и кальциевым стрессом.' },
+      { id: 'high', label: 'Выше целевой', riskScore: 1, min: 80, max: 100, meaning: 'Высокая доля клеток с активными митохондриями. Читать вместе с оксидативным и кальциевым стрессом.', firstAction: 'Оценить как состояние повышенной нагрузки, а не как благоприятный признак.' },
     ],
   },
   nadh: {
     indicatorId: 'nadh',
     zones: [
-      { id: 'lowAccumulation', label: 'Значительно снижен', riskScore: 3, min: 0, max: 20.9, meaning: 'Низкое внутриклеточное накопление НАДН: недостаточное образование либо перехват обходным путём.' },
-      { id: 'borderlineLow', label: 'Снижен', riskScore: 2, min: 21, max: 29.9, meaning: 'Сниженное накопление НАДН.' },
+      { id: 'lowAccumulation', label: 'Значительно снижен', riskScore: 3, min: 0, max: 20.9, meaning: 'Низкое внутриклеточное накопление НАДН: недостаточное образование либо перехват обходным путём.', firstAction: 'Оценить субстратное обеспечение, гипоксию, токсические воздействия, активность обходных путей окисления.', blankNote: 'Бланк: «воспаление, риск опухолей». Онкологическое утверждение методом не подкреплено.' },
+      { id: 'borderlineLow', label: 'Снижен', riskScore: 2, min: 21, max: 29.9, meaning: 'Сниженное накопление НАДН.', firstAction: 'Те же направления, что при резком снижении, в более мягкой форме.' },
       { id: 'target', label: 'Целевая зона', riskScore: 0, min: 30, max: 59.9, meaning: 'Накопление НАДН в целевой зоне.' },
-      { id: 'elevated', label: 'Повышен', riskScore: 2, min: 60, max: 79.9, meaning: 'Накопление НАДН: образование опережает окисление.' },
-      { id: 'sharplyElevated', label: 'Значительно повышен', riskScore: 3, min: 80, max: 100, meaning: 'Выраженное накопление НАДН: вероятно ограничение его окисления в дыхательной цепи.' },
+      { id: 'elevated', label: 'Повышен', riskScore: 2, min: 60, max: 79.9, meaning: 'Накопление НАДН: образование опережает окисление.', firstAction: 'Оценить субстратную перегрузку и ограничение окисления.' },
+      { id: 'sharplyElevated', label: 'Значительно повышен', riskScore: 3, min: 80, max: 100, meaning: 'Выраженное накопление НАДН: вероятно ограничение его окисления в дыхательной цепи.', firstAction: 'Активный поиск причины ограничения окисления.' },
     ],
   },
 

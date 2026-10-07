@@ -48,6 +48,12 @@ export interface IndicatorDefinition {
   step: number
   hint: string
   description: string
+  /** «Типичная ошибка» из карточки показателя (глава 3). */
+  typicalError?: string
+  /** «Что могло изменить результат временно» (глава 3). */
+  temporaryFactors?: string
+  /** Комментарий бланка, требующий осторожности, не привязанный к зоне (раздел 1.8). */
+  blankNote?: string
 }
 
 export type ZoneColor = 'green' | 'yellow' | 'orange' | 'red'
@@ -65,6 +71,10 @@ export interface ReferenceZone {
   max: number
   /** One-line clinical meaning shown at Level 1. */
   meaning: string
+  /** «Первое действие» для зоны (таблицы зон главы 3). */
+  firstAction?: string
+  /** Формулировка бланка для этой зоны, которую нельзя переносить в заключение (раздел 1.8). */
+  blankNote?: string
 }
 
 export interface IndicatorReferenceConfig {
@@ -500,6 +510,13 @@ export interface ForbiddenPhraseHit {
   message: string
 }
 
+/** Сочетание двух-трёх показателей и первая гипотеза («Сочетания внутри анализа», глава 3). */
+export interface PairHintDefinition {
+  id: string
+  when: ConditionNode
+  text: string
+}
+
 export type SafetyFlagLevel = 'info' | 'warning' | 'critical'
 
 export interface SafetyRuleCondition {
@@ -546,6 +563,8 @@ export interface CalculationResult {
   workup: WorkupPlan
   /** Индексы из ОАК (раздел 7.5). */
   cbcIndices: CbcIndices
+  /** Сработавшие сочетания показателей с первой гипотезой (глава 3). */
+  pairHints: { id: string; text: string }[]
   overallRiskLevel: OverallRiskLevel
   briefConclusion: string
   narrativeText: string

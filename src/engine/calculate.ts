@@ -3,6 +3,7 @@ import type {
   ClinicalContext,
   ClinicalFindingDefinition,
   InfectionPeriodDefinition,
+  PairHintDefinition,
   PanelDefinition,
   PreanalyticItem,
   RedFlagDefinition,
@@ -22,6 +23,7 @@ import { detectPatterns } from './patterns'
 import { selectLeadingPattern } from './priority'
 import { applyInfectionStage, evaluatePreanalytics, resolvePanel } from './study'
 import { detectRedFlags } from './redFlags'
+import { detectPairHints } from './pairHints'
 import { buildWorkup, calculateCbcIndices, type WorkupConfig } from './workup'
 import { detectSafetyFlags } from './safety'
 import { calculateOverallRisk } from './risk'
@@ -47,6 +49,7 @@ export interface CalculationConfig {
   workup: WorkupConfig
   nlrBands: { max: number; text: string }[]
   garkaviBands: { maxPct: number; type: string }[]
+  pairHints: PairHintDefinition[]
 }
 
 export const emptyClinicalContext: ClinicalContext = {
@@ -112,6 +115,7 @@ export function runCalculation(
     redFlags,
     workup,
     cbcIndices,
+    pairHints: detectPairHints(indicatorResults, config.pairHints),
     overallRiskLevel,
     briefConclusion,
     narrativeText,

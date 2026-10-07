@@ -11,6 +11,8 @@ import { dynamicSafetyRules, staticSafetyNotes } from './safetyRules'
 import { exampleInputs } from './example'
 import { betweenStudiesEvents, comparabilityItems, controlGoals, dynamicsTypeTexts, WITHIN_ZONE_SHIFT_PP } from './dynamics'
 import { conclusionChecklist, forbiddenPhrases } from './conclusion'
+import { pairHints } from './pairHints'
+import { authorDecisions } from './calibration'
 
 export {
   indicators,
@@ -33,6 +35,7 @@ export {
   controlGoals,
   conclusionChecklist,
   forbiddenPhrases,
+  authorDecisions,
 }
 
 /** Конфигурация модуля динамики (глава 8). */
@@ -64,4 +67,5 @@ export const calculationConfig: CalculationConfig = {
   },
   nlrBands,
   garkaviBands,
+  pairHints,
 }

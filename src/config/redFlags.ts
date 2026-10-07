@@ -1,4 +1,5 @@
 import type { RedFlagDefinition } from '@/engine/types'
+import { NEUTROPENIA_BELOW } from './calibration'
 
 /**
  * Красные флаги (пособие, раздел 9.3). Находки, при которых первым
@@ -44,7 +45,7 @@ export const redFlags: RedFlagDefinition[] = [
       ],
     },
     requiresFinding: 'neutropenia',
-    neutropeniaBelow: 1.5,
+    neutropeniaBelow: NEUTROPENIA_BELOW,
     checkPrompt: 'Выраженное снижение фагоцитоза или НСТ: проверьте абсолютное число нейтрофилов в ОАК.',
   },
   {

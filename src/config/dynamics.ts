@@ -30,11 +30,8 @@ export const controlGoals: ControlGoalDefinition[] = [
   { id: 'routine', label: 'Плановое наблюдение при спокойной клинике', term: '6–12 месяцев' },
 ]
 
-/**
- * Согласованный сдвиг внутри зон (раздел 8.2): минимальное изменение
- * показателя, процентных пунктов. Пособие порога не задаёт — рабочее значение.
- */
-export const WITHIN_ZONE_SHIFT_PP = 5
+/** Порог согласованного сдвига внутри зон — в calibration.ts. */
+export { WITHIN_ZONE_SHIFT_PP } from './calibration'
 
 /** Семь типов динамики (таблица 8.4) и два служебных. */
 export const dynamicsTypeTexts: Record<DynamicsType, { meaning: string; tactics: string }> = {
