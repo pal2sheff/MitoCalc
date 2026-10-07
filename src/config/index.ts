@@ -2,6 +2,10 @@ import type { CalculationConfig } from '@/engine'
 import { block1Indicators, block2Indicators, indicatorList, indicators } from './indicators'
 import { referenceRanges } from './referenceRanges'
 import { contours } from './contours'
+import { panels } from './panels'
+import { preanalyticItems, infectionPeriods, clinicalFindings, clinicalSituations } from './clinicalContext'
+import { redFlags } from './redFlags'
+import { baseWorkupSet, baseWorkupExtension, indicatorWorkup, nlrBands, garkaviBands } from './workup'
 import { patterns } from './patterns'
 import { dynamicSafetyRules, staticSafetyNotes } from './safetyRules'
 import { exampleInputs } from './example'
@@ -14,6 +18,11 @@ export {
   referenceRanges,
   contours,
   patterns,
+  panels,
+  preanalyticItems,
+  infectionPeriods,
+  clinicalFindings,
+  clinicalSituations,
   dynamicSafetyRules,
   staticSafetyNotes,
   exampleInputs,
@@ -27,4 +36,17 @@ export const calculationConfig: CalculationConfig = {
   patterns,
   safetyRules: dynamicSafetyRules,
   staticSafetyNotes,
+  panels,
+  preanalyticItems,
+  infectionPeriods,
+  clinicalFindings,
+  redFlags,
+  workup: {
+    baseSet: baseWorkupSet,
+    baseSetExtension: baseWorkupExtension,
+    byIndicator: indicatorWorkup,
+    situations: clinicalSituations,
+  },
+  nlrBands,
+  garkaviBands,
 }

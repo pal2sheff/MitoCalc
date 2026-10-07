@@ -11,7 +11,7 @@ const LEVEL_LABEL: Record<string, string> = {
   E: 'E · сохранный профиль',
 }
 
-function PatternCard({ match, isLeading }: { match: PatternMatch; isLeading: boolean }) {
+function PatternCard({ match, isLeading, hint }: { match: PatternMatch; isLeading: boolean; hint?: string[] }) {
   const { priorityContext, toggleConfirmedSystemic, toggleExplainedByEvent } = useMitoPassport()
   const p = match.pattern
   const confirmed = priorityContext.confirmedSystemic.includes(p.id)
@@ -55,6 +55,9 @@ function PatternCard({ match, isLeading }: { match: PatternMatch; isLeading: boo
           Объясняется недавним событием или условиями забора (правило 7)
         </label>
       </div>
+      {hint && hint.length > 0 && !explained && (
+        <p className="mt-2 text-xs text-amber-800">Может объясняться отмеченным событием: {hint.join('; ').toLowerCase()}. Проверьте правило 7.</p>
+      )}
 
       <Accordion className="mt-4" summary="Подробнее">
         <dl className="space-y-3">
@@ -114,7 +117,12 @@ export function PatternCards({ result }: { result: CalculationResult }) {
       ) : (
         <div className="space-y-3">
           {ordered.map((match) => (
-            <PatternCard key={match.pattern.id} match={match} isLeading={match === priority.leading} />
+            <PatternCard
+              key={match.pattern.id}
+              match={match}
+              isLeading={match === priority.leading}
+              hint={result.study.preanalytics.rule7Hints.find((h) => h.patternId === match.pattern.id)?.reasons}
+            />
           ))}
         </div>
       )}

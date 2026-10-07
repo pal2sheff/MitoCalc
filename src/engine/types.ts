@@ -217,6 +217,8 @@ export interface PatternDefinition {
   whatToCheck: string[]
   clinicalMeaning: string
   cautiousStrategy: string
+  /** «Исключить прежде всего» из таблицы 7.3. */
+  excludeFirst: string
 }
 
 export interface PatternMatch {
@@ -262,6 +264,146 @@ export interface PatternPriority {
   appliedRules: string[]
 }
 
+// ---------------------------------------------------------------------------
+// Клинический контекст (этап 3): комплектация, условия забора, анамнез, ОАК
+// ---------------------------------------------------------------------------
+
+export type PanelId = 'light' | 'standart' | 'pro' | 'max'
+
+export interface PanelDefinition {
+  id: PanelId
+  label: string
+  /** Показатели, входящие в комплектацию. */
+  indicatorIds: IndicatorId[]
+  /** Показатели, которые встречаются в части отчётов этой комплектации (Pro с комплексом III). */
+  optionalIndicatorIds: IndicatorId[]
+  notes: string[]
+}
+
+export type InfectionPeriod = 'none' | 'acute' | 'prolonged' | 'chronic'
+
+export interface CbcInputs {
+  /** Доля лимфоцитов в лейкоформуле, %. */
+  lymphocytesPct?: number
+  /** Абсолютное число нейтрофилов, ×10⁹/л. */
+  neutrophilsAbs?: number
+  /** Абсолютное число лимфоцитов, ×10⁹/л. */
+  lymphocytesAbs?: number
+}
+
+/** Всё, что врач вводит помимо чисел МИТОпаспорта. */
+export interface ClinicalContext extends PriorityContext {
+  /** 'auto' — комплектация определяется по введённым показателям. */
+  panel: PanelId | 'auto'
+  /** Отмеченные нарушения условий забора и события предшествующих недель. */
+  preanalytics: string[]
+  infectionPeriod: InfectionPeriod
+  /** Клинические находки для красных флагов раздела 9.3. */
+  clinicalFindings: string[]
+  /** Клинические ситуации из таблицы 7.4. */
+  situations: string[]
+  cbc: CbcInputs
+}
+
+export interface PreanalyticItem {
+  id: string
+  label: string
+  /** Строка для раздела «Условия исследования» заключения. */
+  conclusionText: string
+  /** Номера паттернов, которые это событие может объяснить (подсказка к правилу 7). */
+  mayExplainPatterns: number[]
+}
+
+export interface InfectionPeriodDefinition {
+  id: InfectionPeriod
+  label: string
+  /** Стадия паттерна 14 и тактика (таблица стадий в разделе 6.2). */
+  stage14: string | null
+  conclusionText: string | null
+  mayExplainPatterns: number[]
+}
+
+export interface ClinicalFindingDefinition {
+  id: string
+  label: string
+}
+
+/** Красный флаг раздела 9.3: числовое условие и клиническая находка. */
+export interface RedFlagDefinition {
+  id: string
+  finding: string
+  exclude: string
+  action: string
+  /** Числовое условие по показателям; если не задано, флаг зависит только от клиники. */
+  when?: ConditionNode
+  /** Альтернатива when: хотя бы один контур с тяжестью не ниже указанной. */
+  contourSeverityMin?: ContourSeverity
+  /** Клиническая находка (id из clinicalFindings), без которой флаг не срабатывает. */
+  requiresFinding?: string
+  /** Считать нейтропенией абсолютное число нейтрофилов ниже порога, ×10⁹/л. */
+  neutropeniaBelow?: number
+  /** Текст подсказки, если числовое условие выполнено, а клиника не отмечена. */
+  checkPrompt?: string
+}
+
+export interface RedFlagResult {
+  id: string
+  /** confirmed — условие и клиника совпали; check — проверить клинику. */
+  status: 'confirmed' | 'check'
+  finding: string
+  exclude: string
+  action: string
+  prompt?: string
+}
+
+export interface IndicatorWorkup {
+  firstLine: string[]
+  secondLine: string[]
+}
+
+export interface ClinicalSituationDefinition {
+  id: string
+  label: string
+  indicatorIds: IndicatorId[]
+}
+
+export interface WorkupPlan {
+  baseSet: string[]
+  baseSetExtension: string
+  byIndicator: { id: IndicatorId; label: string; zoneLabel: string; firstLine: string[]; secondLine: string[] }[]
+  byPattern: { manualNumber: number; name: string; excludeFirst: string; analyses: string[] }[]
+  situations: {
+    id: string
+    label: string
+    indicators: { id: IndicatorId; label: string; zoneLabel: string | null; deviated: boolean }[]
+  }[]
+}
+
+export interface CbcIndices {
+  nlr: { value: number; interpretation: string } | null
+  garkavi: { type: string; lymphocytesPct: number } | null
+  notes: string[]
+}
+
+export interface StudyContextResult {
+  panel: {
+    id: PanelId | 'custom'
+    label: string
+    /** true — определена по введённым показателям, false — выбрана врачом. */
+    detected: boolean
+    ignoredIndicatorIds: IndicatorId[]
+    notes: string[]
+  }
+  preanalytics: {
+    items: { id: string; label: string; conclusionText: string }[]
+    /** Есть факторы, ограничивающие интерпретацию. */
+    limited: boolean
+    /** Подсказки к правилу 7: активные паттерны, которые может объяснить отмеченное событие. */
+    rule7Hints: { patternId: string; manualNumber: number; reasons: string[] }[]
+    conclusionLine: string
+  }
+}
+
 export type SafetyFlagLevel = 'info' | 'warning' | 'critical'
 
 export interface SafetyRuleCondition {
@@ -281,7 +423,12 @@ export interface SafetyFlag {
   text: string
 }
 
-export type OverallRiskLevel = 'норма' | 'умеренный риск' | 'высокий риск' | 'критический риск'
+/** Сводная степень функциональных изменений для шапки экрана (не клиническая категория пособия). */
+export type OverallRiskLevel =
+  | 'без значимых изменений'
+  | 'умеренные изменения'
+  | 'выраженные изменения'
+  | 'красный флаг: профильное обследование'
 
 export interface CalculationResult {
   indicatorResults: IndicatorResult[]
@@ -295,6 +442,14 @@ export interface CalculationResult {
   priority: PatternPriority
   /** Паттерны без оценки из-за неполного объёма исследования (правило 6 раздела 6.3). */
   notEvaluatedPatterns: NotEvaluatedPattern[]
+  /** Комплектация и условия исследования. */
+  study: StudyContextResult
+  /** Красные флаги раздела 9.3. */
+  redFlags: RedFlagResult[]
+  /** План обследования по главе 7. */
+  workup: WorkupPlan
+  /** Индексы из ОАК (раздел 7.5). */
+  cbcIndices: CbcIndices
   overallRiskLevel: OverallRiskLevel
   briefConclusion: string
   narrativeText: string

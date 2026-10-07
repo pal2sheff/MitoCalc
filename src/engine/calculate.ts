@@ -1,5 +1,11 @@
 import type {
   CalculationResult,
+  ClinicalContext,
+  ClinicalFindingDefinition,
+  InfectionPeriodDefinition,
+  PanelDefinition,
+  PreanalyticItem,
+  RedFlagDefinition,
   ContourDefinition,
   IndicatorDefinition,
   IndicatorId,
@@ -7,14 +13,16 @@ import type {
   IndicatorReferenceConfig,
   IndicatorResult,
   PatternDefinition,
-  PriorityContext,
   SafetyRuleDefinition,
 } from './types'
 import { normalizeIndicator } from './normalize'
 import { getRiskScore, getZone } from './zones'
 import { calculateContours, selectLeadingContour } from './contours'
 import { detectPatterns } from './patterns'
-import { emptyPriorityContext, selectLeadingPattern } from './priority'
+import { selectLeadingPattern } from './priority'
+import { applyInfectionStage, evaluatePreanalytics, resolvePanel } from './study'
+import { detectRedFlags } from './redFlags'
+import { buildWorkup, calculateCbcIndices, type WorkupConfig } from './workup'
 import { detectSafetyFlags } from './safety'
 import { calculateOverallRisk } from './risk'
 import { generateClinicalSummary } from './summary'
@@ -31,17 +39,39 @@ export interface CalculationConfig {
   patterns: PatternDefinition[]
   safetyRules: SafetyRuleDefinition[]
   staticSafetyNotes: CalculationResult['generalSafetyNotes']
+  panels: PanelDefinition[]
+  preanalyticItems: PreanalyticItem[]
+  infectionPeriods: InfectionPeriodDefinition[]
+  clinicalFindings: ClinicalFindingDefinition[]
+  redFlags: RedFlagDefinition[]
+  workup: WorkupConfig
+  nlrBands: { max: number; text: string }[]
+  garkaviBands: { maxPct: number; type: string }[]
+}
+
+export const emptyClinicalContext: ClinicalContext = {
+  confirmedSystemic: [],
+  explainedByEvent: [],
+  panel: 'auto',
+  preanalytics: [],
+  infectionPeriod: 'none',
+  clinicalFindings: [],
+  situations: [],
+  cbc: {},
 }
 
 /**
- * Конвейер: показатели → контуры (гл. 5) → паттерны и выбор ведущего (гл. 6).
- * context — клинические отметки врача для правил 7 и 8 раздела 6.3.
+ * Конвейер: комплектация → показатели → контуры (гл. 5) → паттерны и выбор
+ * ведущего (гл. 6) → красные флаги (9.3) → план обследования (гл. 7).
+ * context — всё, что врач вводит помимо чисел: комплектация, условия забора,
+ * анамнез, отметки для правил 7 и 8, данные ОАК.
  */
 export function runCalculation(
-  inputs: IndicatorInputs,
+  rawInputs: IndicatorInputs,
   config: CalculationConfig,
-  context: PriorityContext = emptyPriorityContext,
+  context: ClinicalContext = emptyClinicalContext,
 ): CalculationResult {
+  const { filteredInputs: inputs, panel } = resolvePanel(rawInputs, context, config.panels)
   const indicatorResults: IndicatorResult[] = []
 
   for (const definition of config.indicatorList) {
@@ -54,12 +84,22 @@ export function runCalculation(
 
   const contourResults = calculateContours(indicatorResults, config.contours)
   const leadingContour = selectLeadingContour(contourResults)
-  const { matches: patternMatches, notEvaluated: notEvaluatedPatterns } = detectPatterns(indicatorResults, config.patterns)
+  const detection = detectPatterns(indicatorResults, config.patterns)
+  const patternMatches = applyInfectionStage(detection.matches, context, config.infectionPeriods)
+  const notEvaluatedPatterns = detection.notEvaluated
   const priority = selectLeadingPattern(patternMatches, context)
   const safetyFlags = detectSafetyFlags(indicatorResults, config.safetyRules)
 
-  const overallRiskLevel = calculateOverallRisk(contourResults, safetyFlags)
-  const { briefConclusion, narrativeText } = generateClinicalSummary(priority, leadingContour, contourResults)
+  const preanalytics = evaluatePreanalytics(context, config.preanalyticItems, config.infectionPeriods, patternMatches)
+  const study = { panel, preanalytics }
+  const redFlags = detectRedFlags(indicatorResults, contourResults, context, config.redFlags)
+
+  const orderedPatterns = [...(priority.leading ? [priority.leading] : []), ...priority.manifestations]
+  const workup = buildWorkup(indicatorResults, orderedPatterns, context, config.workup)
+  const cbcIndices = calculateCbcIndices(context, indicatorResults, config.nlrBands, config.garkaviBands)
+
+  const overallRiskLevel = calculateOverallRisk(contourResults, safetyFlags, redFlags)
+  const { briefConclusion, narrativeText } = generateClinicalSummary(priority, leadingContour, contourResults, study, redFlags)
 
   return {
     indicatorResults,
@@ -68,6 +108,10 @@ export function runCalculation(
     patternMatches,
     priority,
     notEvaluatedPatterns,
+    study,
+    redFlags,
+    workup,
+    cbcIndices,
     overallRiskLevel,
     briefConclusion,
     narrativeText,

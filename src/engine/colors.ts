@@ -23,10 +23,10 @@ export function contourSeverityToColor(severity: ContourSeverity): ZoneColor {
 }
 
 export const OVERALL_RISK_COLOR: Record<OverallRiskLevel, ZoneColor> = {
-  'норма': 'green',
-  'умеренный риск': 'yellow',
-  'высокий риск': 'orange',
-  'критический риск': 'red',
+  'без значимых изменений': 'green',
+  'умеренные изменения': 'yellow',
+  'выраженные изменения': 'orange',
+  'красный флаг: профильное обследование': 'red',
 }
 
 export function overallRiskLevelToColor(level: OverallRiskLevel): ZoneColor {

@@ -1,12 +1,20 @@
 import { useNavigate } from 'react-router-dom'
-import { block1Indicators, block2Indicators } from '@/config'
+import { block1Indicators, block2Indicators, panels } from '@/config'
 import { useMitoPassport } from '@/state/MitoPassportContext'
 import { Button } from '@/components/ui'
 import { IndicatorField } from '@/components/IndicatorField'
+import { PanelSelector } from '@/components/context/PanelSelector'
+import { ClinicalContextForm } from '@/components/context/ClinicalContextForm'
 
 export function InputPage() {
   const navigate = useNavigate()
-  const { inputs, setValue, loadExample, clearForm, calculate } = useMitoPassport()
+  const { inputs, setValue, loadExample, clearForm, calculate, priorityContext } = useMitoPassport()
+
+  const panel = panels.find((p) => p.id === priorityContext.panel)
+  const visible = (id: string) =>
+    !panel || panel.indicatorIds.some((x) => x === id) || panel.optionalIndicatorIds.some((x) => x === id)
+  const block1 = block1Indicators.filter((d) => visible(d.id))
+  const block2 = block2Indicators.filter((d) => visible(d.id))
 
   function handleCalculate() {
     calculate()
@@ -32,12 +40,14 @@ export function InputPage() {
         </div>
       </header>
 
+      <PanelSelector />
+
       <section className="mb-8">
         <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-soft uppercase">
           Блок 1. Иммунно-клеточный и стрессовый статус
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {block1Indicators.map((definition) => (
+          {block1.map((definition) => (
             <IndicatorField
               key={definition.id}
               definition={definition}
@@ -48,6 +58,7 @@ export function InputPage() {
         </div>
       </section>
 
+      {block2.length > 0 && (
       <section className="mb-10">
         <h2 className="mb-1 text-sm font-semibold tracking-wide text-ink-soft uppercase">
           Блок 2. Митохондриальные комплексы и дыхание (ΔNADH)
@@ -56,7 +67,7 @@ export function InputPage() {
           Ориентируйтесь на число, а не на стрелку бланка: значения выходят за шкалу ±20. Знак читается по пособию (минус — обходной путь, у комплекса V — снижение синтеза АТФ). Числовые границы «около нуля» (±15) и «выражено» (40) черновые и требуют решения авторов.
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {block2Indicators.map((definition) => (
+          {block2.map((definition) => (
             <IndicatorField
               key={definition.id}
               definition={definition}
@@ -66,6 +77,9 @@ export function InputPage() {
           ))}
         </div>
       </section>
+      )}
+
+      <ClinicalContextForm />
 
       <div className="flex justify-end">
         <Button onClick={handleCalculate}>Рассчитать</Button>

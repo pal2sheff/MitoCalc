@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import type { CalculationResult, IndicatorId, IndicatorInputs, PriorityContext } from '@/engine'
-import { emptyPriorityContext, runCalculation } from '@/engine'
+import type { CalculationResult, ClinicalContext, IndicatorId, IndicatorInputs } from '@/engine'
+import { emptyClinicalContext, runCalculation } from '@/engine'
 import { calculationConfig, exampleInputs } from '@/config'
 
 interface MitoPassportContextValue {
@@ -10,8 +10,10 @@ interface MitoPassportContextValue {
   loadExample: () => void
   clearForm: () => void
   calculate: () => void
-  /** Клинические отметки врача для правил 7 и 8. */
-  priorityContext: PriorityContext
+  /** Клинический контекст: комплектация, условия забора, анамнез, ОАК, отметки правил 7 и 8. */
+  priorityContext: ClinicalContext
+  updateContext: (patch: Partial<ClinicalContext>) => void
+  toggleInContext: (key: 'preanalytics' | 'clinicalFindings' | 'situations', id: string) => void
   toggleConfirmedSystemic: (patternId: string) => void
   toggleExplainedByEvent: (patternId: string) => void
 }
@@ -21,15 +23,23 @@ const MitoPassportContext = createContext<MitoPassportContextValue | null>(null)
 export function MitoPassportProvider({ children }: { children: ReactNode }) {
   const [inputs, setInputs] = useState<IndicatorInputs>({})
   const [result, setResult] = useState<CalculationResult | null>(null)
-  const [priorityContext, setPriorityContext] = useState<PriorityContext>(emptyPriorityContext)
+  const [priorityContext, setPriorityContext] = useState<ClinicalContext>(emptyClinicalContext)
 
-  function applyContext(next: PriorityContext) {
+  function applyContext(next: ClinicalContext) {
     setPriorityContext(next)
     if (result) setResult(runCalculation(inputs, calculationConfig, next))
   }
 
   function toggle(list: string[], id: string): string[] {
     return list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
+  }
+
+  function updateContext(patch: Partial<ClinicalContext>) {
+    applyContext({ ...priorityContext, ...patch })
+  }
+
+  function toggleInContext(key: 'preanalytics' | 'clinicalFindings' | 'situations', id: string) {
+    applyContext({ ...priorityContext, [key]: toggle(priorityContext[key], id) })
   }
 
   function toggleConfirmedSystemic(patternId: string) {
@@ -56,13 +66,13 @@ export function MitoPassportProvider({ children }: { children: ReactNode }) {
   function loadExample() {
     setInputs(exampleInputs)
     setResult(null)
-    setPriorityContext(emptyPriorityContext)
+    setPriorityContext(emptyClinicalContext)
   }
 
   function clearForm() {
     setInputs({})
     setResult(null)
-    setPriorityContext(emptyPriorityContext)
+    setPriorityContext(emptyClinicalContext)
   }
 
   function calculate() {
@@ -77,6 +87,8 @@ export function MitoPassportProvider({ children }: { children: ReactNode }) {
     clearForm,
     calculate,
     priorityContext,
+    updateContext,
+    toggleInContext,
     toggleConfirmedSystemic,
     toggleExplainedByEvent,
   }

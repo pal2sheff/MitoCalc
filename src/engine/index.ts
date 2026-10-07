@@ -1,5 +1,5 @@
 export * from './types'
-export { runCalculation, type CalculationConfig } from './calculate'
+export { runCalculation, emptyClinicalContext, type CalculationConfig } from './calculate'
 export { normalizeIndicator } from './normalize'
 export { evaluateCondition, evaluateConditionTri, type TriState } from './conditions'
 export { getZone, getRiskScore } from './zones'

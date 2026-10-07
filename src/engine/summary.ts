@@ -1,4 +1,4 @@
-import type { ContourResult, LeadingContour, PatternPriority } from './types'
+import type { ContourResult, LeadingContour, PatternPriority, RedFlagResult, StudyContextResult } from './types'
 
 export interface ClinicalSummary {
   briefConclusion: string
@@ -17,8 +17,17 @@ export function generateClinicalSummary(
   priority: PatternPriority,
   leadingContour: LeadingContour | null,
   contours: ContourResult[],
+  study: StudyContextResult,
+  redFlags: RedFlagResult[],
 ): ClinicalSummary {
   const { leading, manifestations } = priority
+
+  const confirmedFlags = redFlags.filter((f) => f.status === 'confirmed')
+  const redFlagText =
+    confirmedFlags.length > 0
+      ? `Красный флаг: ${confirmedFlags.map((f) => f.finding.toLowerCase()).join('; ')}. Первоочередное действие — ${confirmedFlags.map((f) => f.action.toLowerCase()).join('; ')}; остальная интерпретация вторична. `
+      : ''
+  const studyText = `Комплектация: ${study.panel.label}. ${study.preanalytics.conclusionLine} `
 
   const notEvaluatedContours = contours.filter((c) => c.status === 'не оценён').map((c) => c.label)
   const notEvaluatedText =
@@ -31,10 +40,10 @@ export function generateClinicalSummary(
     : ''
 
   if (!leading) {
-    const briefConclusion = `${priority.leadingReason}${contourText}`
+    const briefConclusion = `${redFlagText}${priority.leadingReason}${contourText}`
     return {
       briefConclusion,
-      narrativeText: `${briefConclusion}${notEvaluatedText} ${CLINICAL_CHECK}`,
+      narrativeText: `${studyText}${briefConclusion}${notEvaluatedText} ${CLINICAL_CHECK}`,
     }
   }
 
@@ -47,10 +56,10 @@ export function generateClinicalSummary(
       ? ' Системный контекст не установлен: паттерны уровня A клиникой не подтверждены.'
       : ''
 
-  const briefConclusion = `Ведущий паттерн: ${leadName}${withText}.${systemicText}${contourText}`
+  const briefConclusion = `${redFlagText}Ведущий паттерн: ${leadName}${withText}.${systemicText}${contourText}`
 
   const narrativeText =
-    `${leading.pattern.conclusionLine}${systemicText}${contourText}${notEvaluatedText} ` +
+    `${studyText}${redFlagText}${leading.pattern.conclusionLine}${systemicText}${contourText}${notEvaluatedText} ` +
     `${CLINICAL_CHECK} Приоритет действий: ${leading.pattern.cautiousStrategy}`
 
   return { briefConclusion, narrativeText }

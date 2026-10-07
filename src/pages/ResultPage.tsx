@@ -7,6 +7,9 @@ import { ContourCards } from '@/components/result/ContourCards'
 import { PatternCards } from '@/components/result/PatternCards'
 import { NarrativeBlock } from '@/components/result/NarrativeBlock'
 import { SafetyBlock } from '@/components/result/SafetyBlock'
+import { RedFlagsBlock } from '@/components/result/RedFlagsBlock'
+import { StudyBlock } from '@/components/result/StudyBlock'
+import { WorkupBlock } from '@/components/result/WorkupBlock'
 
 export function ResultPage() {
   const { result } = useMitoPassport()
@@ -23,10 +26,13 @@ export function ResultPage() {
         </Button>
       </header>
 
+      <RedFlagsBlock result={result} />
       <SummaryHeader result={result} />
+      <StudyBlock result={result} />
       <IndicatorTable result={result} />
       <ContourCards result={result} />
       <PatternCards result={result} />
+      <WorkupBlock result={result} />
       <NarrativeBlock result={result} />
       <SafetyBlock result={result} />
     </div>
