@@ -1,5 +1,5 @@
 import type { DynamicsResult } from '@/engine'
-import { Accordion, Card } from '@/components/ui'
+import { Accordion, Section } from '@/components/ui'
 
 const CHECK_LABEL = (v: boolean | null, yes: string, no: string) => (v === null ? 'не оценено' : v ? yes : no)
 
@@ -8,17 +8,17 @@ export function DynamicsBlock({ dynamics }: { dynamics: DynamicsResult }) {
   const within = dynamics.indicatorChanges.filter((c) => c.kind === 'withinZone')
 
   return (
-    <Card className="mb-6">
-      <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-soft uppercase">Динамика</h2>
+    <Section id="dynamics" title="Динамика">
+      <div className="bg-paper p-5">
 
       {dynamics.progressiveWorsening && (
-        <p className="mb-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+        <p className="mb-4 border-l-4 border-zone-severe bg-[#f8e3e3] px-4 py-3 text-sm text-[#5e1519]">
           Красный флаг: прогрессирующее ухудшение всех контуров при адекватном лечении. Исключить недиагностированное системное
           заболевание; пересмотр диагностической гипотезы, расширение обследования.
         </p>
       )}
 
-      <p className="text-base font-medium text-ink">{dynamics.type}</p>
+      <p className="text-lg font-semibold tracking-tight text-ink">{dynamics.type}</p>
       <p className="mt-1 text-sm text-ink">{dynamics.meaning}</p>
       <p className="mt-1 text-sm text-ink">
         <span className="font-medium">Тактика: </span>
@@ -26,7 +26,7 @@ export function DynamicsBlock({ dynamics }: { dynamics: DynamicsResult }) {
       </p>
 
       {dynamics.notes.map((n) => (
-        <p key={n} className="mt-2 text-xs text-amber-800">
+        <p key={n} className="mt-2 text-xs text-[#8a4310]">
           {n}
         </p>
       ))}
@@ -35,9 +35,9 @@ export function DynamicsBlock({ dynamics }: { dynamics: DynamicsResult }) {
       )}
 
       {dynamics.traps.length > 0 && (
-        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
-          <p className="text-xs font-semibold tracking-wide text-amber-800 uppercase">Показатель улучшился, контур — нет (8.5)</p>
-          <ul className="mt-1 space-y-1 text-sm text-amber-900">
+        <div className="mt-4 border-l-4 border-zone-mild bg-[#fbf2d9] px-4 py-3">
+          <p className="text-sm font-medium text-[#5a430b]">Показатель улучшился, контур — нет</p>
+          <ul className="mt-1 space-y-1 text-sm text-[#5a430b]">
             {dynamics.traps.map((t) => (
               <li key={t}>{t}</li>
             ))}
@@ -52,7 +52,7 @@ export function DynamicsBlock({ dynamics }: { dynamics: DynamicsResult }) {
       </div>
 
       <div className="mt-4">
-        <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Контуры</p>
+        <p className="text-sm font-medium text-ink">Контуры</p>
         <ul className="mt-1 space-y-1 text-sm text-ink">
           {dynamics.contourChanges.map((c) => (
             <li key={c.id}>
@@ -68,7 +68,7 @@ export function DynamicsBlock({ dynamics }: { dynamics: DynamicsResult }) {
 
       {significant.length > 0 && (
         <div className="mt-4">
-          <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Значимые изменения показателей</p>
+          <p className="text-sm font-medium text-ink">Значимые изменения</p>
           <ul className="mt-1 space-y-1 text-sm text-ink">
             {significant.map((c) => (
               <li key={c.id}>
@@ -93,6 +93,7 @@ export function DynamicsBlock({ dynamics }: { dynamics: DynamicsResult }) {
           </ul>
         </Accordion>
       )}
-    </Card>
+      </div>
+    </Section>
   )
 }

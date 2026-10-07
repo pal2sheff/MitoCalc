@@ -3,33 +3,32 @@ import { panels } from '@/config'
 import { useMitoPassport } from '@/state/MitoPassportContext'
 
 const OPTIONS: { id: PanelId | 'auto'; label: string }[] = [
-  { id: 'auto', label: 'Определить по введённым' },
-  ...panels.map((p) => ({ id: p.id, label: p.label })),
+  { id: 'auto', label: 'По введённым' },
+  ...panels.map((p) => ({ id: p.id, label: p.label.replace(' (ФАН)', '') })),
 ]
 
 export function PanelSelector() {
   const { priorityContext, updateContext } = useMitoPassport()
   return (
-    <section className="mb-8">
-      <h2 className="mb-2 text-sm font-semibold tracking-wide text-ink-soft uppercase">Комплектация</h2>
-      <div className="flex flex-wrap gap-2">
-        {OPTIONS.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            onClick={() => updateContext({ panel: o.id })}
-            className={`rounded-full border px-3 py-1.5 text-sm ${
-              priorityContext.panel === o.id ? 'border-brand bg-brand text-white' : 'border-line bg-white text-ink hover:bg-panel'
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="text-sm text-ink-soft">Комплектация</span>
+      <div className="inline-flex flex-wrap rounded border border-line bg-paper p-0.5" role="radiogroup" aria-label="Комплектация">
+        {OPTIONS.map((o) => {
+          const active = priorityContext.panel === o.id
+          return (
+            <button
+              key={o.id}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => updateContext({ panel: o.id })}
+              className={`rounded-sm px-3 py-1 text-sm ${active ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'}`}
+            >
+              {o.label}
+            </button>
+          )
+        })}
       </div>
-      <p className="mt-2 text-xs text-ink-soft">
-        Смотрите на фактический состав проб в бланке, а не на название комплектации. При выбранной комплектации поля вне её скрыты и
-        в расчёт не берутся.
-      </p>
-    </section>
+    </div>
   )
 }

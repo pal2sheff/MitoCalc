@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+/** Раскрывающийся блок: всё второстепенное прячется сюда. */
 export function Accordion({
   summary,
   children,
@@ -13,18 +14,19 @@ export function Accordion({
 }) {
   return (
     <details className={`group ${className}`} open={defaultOpen}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-brand select-none">
-        <span>{summary}</span>
+      <summary className="inline-flex cursor-pointer items-center gap-1.5 text-sm text-brand select-none hover:text-brand-dark">
         <svg
-          className="h-4 w-4 shrink-0 text-ink-soft transition-transform duration-150 group-open:rotate-180"
+          className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-open:rotate-90"
           viewBox="0 0 20 20"
           fill="none"
           stroke="currentColor"
+          aria-hidden="true"
         >
-          <path d="M5 7.5 10 12.5 15 7.5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M7.5 5 12.5 10 7.5 15" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
+        <span>{summary}</span>
       </summary>
-      <div className="mt-3 text-sm text-ink-soft">{children}</div>
+      <div className="mt-3 text-sm leading-relaxed text-ink-soft">{children}</div>
     </details>
   )
 }

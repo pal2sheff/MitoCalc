@@ -3,7 +3,7 @@ import type { CalculationResult, DynamicsResult } from '@/engine'
 import { autoChecklist, buildConclusion, checkForbiddenPhrases, conclusionToText } from '@/engine'
 import { conclusionChecklist, controlGoals, forbiddenPhrases } from '@/config'
 import { useMitoPassport } from '@/state/MitoPassportContext'
-import { Button, Card } from '@/components/ui'
+import { Accordion, Button, Section } from '@/components/ui'
 
 function download(name: string, content: string, type: string) {
   const blob = new Blob([content], { type })
@@ -55,82 +55,95 @@ export function ConclusionBlock({ result, dynamics }: { result: CalculationResul
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const done = conclusionChecklist.filter((i) => (auto[i.id] ?? manual[i.id]) === true).length
+
   return (
-    <Card className="mb-6">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold tracking-wide text-ink-soft uppercase">Заключение (шаблон 9.2)</h2>
-        {edited && (
-          <Button
-            variant="ghost"
+    <Section
+      id="conclusion"
+      title="Заключение"
+      aside={
+        edited ? (
+          <button
+            type="button"
+            className="text-brand hover:text-brand-dark"
             onClick={() => {
               setEdited(false)
               setText(generated)
             }}
           >
-            Вернуть сгенерированный текст
-          </Button>
-        )}
-      </div>
-
+            Вернуть исходный текст
+          </button>
+        ) : (
+          'текст можно править'
+        )
+      }
+    >
       <textarea
         value={text}
         onChange={(e) => {
           setText(e.target.value)
           setEdited(true)
         }}
-        rows={18}
-        className="w-full rounded-lg border border-line bg-canvas px-3 py-2 font-serif text-sm leading-relaxed text-ink"
+        rows={20}
+        aria-label="Текст заключения"
+        className="block w-full border border-line bg-paper px-6 py-5 font-serif text-[15px] leading-relaxed text-ink focus:border-brand focus:outline-none"
       />
 
       {hits.length > 0 && (
-        <div className="mt-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3">
-          <p className="text-xs font-semibold tracking-wide text-red-800 uppercase">Формулировки, которые не пишутся в заключении (9.4)</p>
-          <ul className="mt-1 space-y-1 text-sm text-red-900">
+        <div className="mt-3 border-l-4 border-zone-severe bg-[#f8e3e3] px-4 py-3 text-sm text-[#5e1519]">
+          <p className="font-medium">Эти формулировки не пишутся в заключении</p>
+          <ul className="mt-1 grid gap-1">
             {hits.map((h, i) => (
               <li key={`${h.id}-${i}`}>
-                «{h.match}» — {h.message}
+                «{h.match}»: {h.message}
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      <div className="mt-4">
-        <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Чек-лист перед выдачей (9.5)</p>
-        <ul className="mt-2 space-y-1.5 text-sm text-ink">
+      <div className="no-print mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={copy}>{copied ? 'Скопировано' : 'Копировать'}</Button>
+          <Button variant="secondary" onClick={() => download('zaklyuchenie.doc', toWordHtml(text), 'application/msword')}>
+            Скачать для Word
+          </Button>
+          <Button variant="ghost" onClick={() => download('zaklyuchenie.txt', text, 'text/plain;charset=utf-8')}>
+            .txt
+          </Button>
+          <Button variant="ghost" onClick={() => window.print()}>
+            Печать
+          </Button>
+        </div>
+        <span className={`text-sm ${allChecked ? 'text-[#1d5c44]' : 'text-ink-soft'}`}>
+          Чек-лист: {done} из {conclusionChecklist.length}
+        </span>
+      </div>
+
+      <Accordion className="no-print mt-3" summary="Чек-лист перед выдачей">
+        <ul className="grid gap-1.5 text-ink">
           {conclusionChecklist.map((item) => {
             const a = auto[item.id]
             return (
-              <li key={item.id} className="flex items-start gap-2">
-                <input
-                  className="mt-1"
-                  type="checkbox"
-                  disabled={a !== null}
-                  checked={a ?? manual[item.id] ?? false}
-                  onChange={() => setManual((m) => ({ ...m, [item.id]: !m[item.id] }))}
-                />
-                <span className={a === false ? 'text-red-800' : ''}>
-                  {item.label}
-                  {a !== null && <span className="text-xs text-ink-soft"> (проверено автоматически)</span>}
-                </span>
+              <li key={item.id}>
+                <label className="flex items-start gap-2.5">
+                  <input
+                    className="mt-0.5 h-4 w-4 shrink-0"
+                    type="checkbox"
+                    disabled={a !== null}
+                    checked={a ?? manual[item.id] ?? false}
+                    onChange={() => setManual((m) => ({ ...m, [item.id]: !m[item.id] }))}
+                  />
+                  <span className={a === false ? 'text-[#7a1f24]' : ''}>
+                    {item.label}
+                    {a !== null && <span className="text-xs text-ink-faint"> · проверено автоматически</span>}
+                  </span>
+                </label>
               </li>
             )
           })}
         </ul>
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button onClick={copy}>{copied ? 'Скопировано' : 'Копировать'}</Button>
-        <Button variant="secondary" onClick={() => download('zaklyuchenie.doc', toWordHtml(text), 'application/msword')}>
-          Скачать для Word
-        </Button>
-        <Button variant="secondary" onClick={() => download('zaklyuchenie.txt', text, 'text/plain;charset=utf-8')}>
-          Скачать .txt
-        </Button>
-      </div>
-      {!allChecked && (
-        <p className="mt-2 text-xs text-ink-soft">Не все пункты чек-листа отмечены. Выгрузка доступна, но проверьте пункты перед выдачей.</p>
-      )}
-    </Card>
+      </Accordion>
+    </Section>
   )
 }

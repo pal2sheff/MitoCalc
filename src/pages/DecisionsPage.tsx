@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom'
 import { authorDecisions } from '@/config'
-import { Button, Card } from '@/components/ui'
+import { Button } from '@/components/ui'
 
 export function DecisionsPage() {
   const navigate = useNavigate()
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-10">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-ink">Черновые решения калькулятора</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Черновые решения калькулятора</h1>
           <p className="mt-1 text-sm text-ink-soft">
             Решения, которых нет в пособии или где пособие противоречит само себе. Требуют согласования авторами. Числовые значения
             меняются в файле src/config/calibration.ts.
@@ -18,7 +18,7 @@ export function DecisionsPage() {
           На главную
         </Button>
       </header>
-      <Card>
+      <div className="border border-line bg-paper px-5">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -39,7 +39,7 @@ export function DecisionsPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
     </div>
   )
 }

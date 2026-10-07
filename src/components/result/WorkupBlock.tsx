@@ -1,90 +1,75 @@
 import type { CalculationResult } from '@/engine'
-import { Accordion, Card } from '@/components/ui'
+import { Accordion, Section } from '@/components/ui'
 
 export function WorkupBlock({ result }: { result: CalculationResult }) {
   const { workup, cbcIndices } = result
+  const [first, ...others] = workup.byPattern
   return (
-    <Card className="mb-6">
-      <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-soft uppercase">План обследования</h2>
-
-      <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Базовый набор (7.1)</p>
-      <p className="mt-1 text-sm text-ink">{workup.baseSet.join(', ')}.</p>
-      <p className="mt-1 text-xs text-ink-soft">{workup.baseSetExtension}</p>
-
-      {workup.byPattern.length > 0 && (
-        <div className="mt-4">
-          <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">По паттернам (7.3)</p>
-          <ul className="mt-1 space-y-2 text-sm text-ink">
-            {workup.byPattern.map((p) => (
-              <li key={p.manualNumber}>
-                <span className="font-medium">
-                  {p.manualNumber}. {p.name}.
-                </span>{' '}
-                Исключить: {p.excludeFirst}. Анализы: {p.analyses.join(', ')}.
-              </li>
-            ))}
-          </ul>
+    <Section id="workup" title="План обследования">
+      <div className="grid gap-5 bg-paper p-5">
+        <div>
+          <p className="text-sm font-medium text-ink">Базовый набор</p>
+          <p className="mt-1 text-sm leading-relaxed text-ink">{workup.baseSet.join(', ')}.</p>
         </div>
-      )}
-
-      {workup.situations.length > 0 && (
-        <div className="mt-4">
-          <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Клиническая ситуация (7.4)</p>
-          {workup.situations.map((s) => (
-            <div key={s.id} className="mt-2">
-              <p className="text-sm font-medium text-ink">{s.label}</p>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {s.indicators.map((i) => (
-                  <span
-                    key={i.id}
-                    className={`rounded-full px-2.5 py-1 text-xs ${
-                      i.zoneLabel === null ? 'bg-slate-100 text-slate-500' : i.deviated ? 'bg-amber-100 text-amber-900' : 'bg-panel text-ink-soft'
-                    }`}
-                  >
-                    {i.label}: {i.zoneLabel ?? 'не измерен'}
-                  </span>
+        {first && (
+          <div>
+            <p className="text-sm font-medium text-ink">По ведущему паттерну</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink">
+              Исключить: {first.excludeFirst.charAt(0).toLowerCase() + first.excludeFirst.slice(1)}. Анализы: {first.analyses.join(', ')}.
+            </p>
+          </div>
+        )}
+        {workup.situations.map((s) => (
+          <div key={s.id}>
+            <p className="text-sm font-medium text-ink">{s.label}</p>
+            <p className="mt-1 text-sm text-ink-soft">
+              {s.indicators.map((i, idx) => (
+                <span key={i.id} className={i.deviated ? 'text-[#8a4310]' : ''}>
+                  {i.label} — {i.zoneLabel ? i.zoneLabel.toLowerCase() : 'не измерен'}
+                  {idx < s.indicators.length - 1 ? '; ' : '.'}
+                </span>
+              ))}
+            </p>
+          </div>
+        ))}
+        {(cbcIndices.nlr || cbcIndices.garkavi) && (
+          <div>
+            <p className="text-sm font-medium text-ink">Индексы из ОАК</p>
+            {cbcIndices.nlr && <p className="mt-1 text-sm text-ink">НЛС {cbcIndices.nlr.value}: {cbcIndices.nlr.interpretation.charAt(0).toLowerCase() + cbcIndices.nlr.interpretation.slice(1)}.</p>}
+            {cbcIndices.garkavi && <p className="mt-1 text-sm text-ink">Лимфоциты {cbcIndices.garkavi.lymphocytesPct} %: {cbcIndices.garkavi.type.toLowerCase()} по Гаркави.</p>}
+            {cbcIndices.notes.slice(2).map((n) => (
+              <p key={n} className="mt-1 text-sm text-[#8a4310]">
+                {n}
+              </p>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          {others.length > 0 && (
+            <Accordion summary={`По остальным паттернам: ${others.length}`}>
+              <ul className="grid gap-1.5">
+                {others.map((p) => (
+                  <li key={p.manualNumber}>
+                    {p.manualNumber}. {p.name}: исключить {p.excludeFirst.charAt(0).toLowerCase() + p.excludeFirst.slice(1)}; {p.analyses.join(', ')}.
+                  </li>
                 ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {workup.byIndicator.length > 0 && (
-        <Accordion className="mt-4" summary="По отклонённым показателям (7.2)">
-          <ul className="space-y-2">
-            {workup.byIndicator.map((i) => (
-              <li key={i.id}>
-                <span className="font-medium">
-                  {i.label} ({i.zoneLabel}).
-                </span>{' '}
-                Первая линия: {i.firstLine.join(', ')}. По гипотезе: {i.secondLine.join(', ')}.
-              </li>
-            ))}
-          </ul>
-        </Accordion>
-      )}
-
-      {(cbcIndices.nlr || cbcIndices.garkavi) && (
-        <div className="mt-4 border-t border-line pt-4">
-          <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Индексы из ОАК (7.5)</p>
-          {cbcIndices.nlr && (
-            <p className="mt-1 text-sm text-ink">
-              НЛС {cbcIndices.nlr.value}. {cbcIndices.nlr.interpretation}.
-            </p>
+              </ul>
+            </Accordion>
           )}
-          {cbcIndices.garkavi && (
-            <p className="mt-1 text-sm text-ink">
-              Лимфоциты {cbcIndices.garkavi.lymphocytesPct} %: {cbcIndices.garkavi.type.toLowerCase()} (по Гаркави).
-            </p>
+          {workup.byIndicator.length > 0 && (
+            <Accordion summary={`По отклонённым показателям: ${workup.byIndicator.length}`}>
+              <ul className="grid gap-1.5">
+                {workup.byIndicator.map((i) => (
+                  <li key={i.id}>
+                    {i.label}: {i.firstLine.join(', ')}; по гипотезе — {i.secondLine.join(', ')}.
+                  </li>
+                ))}
+              </ul>
+            </Accordion>
           )}
-          {cbcIndices.notes.map((n) => (
-            <p key={n} className="mt-1 text-xs leading-relaxed text-ink-soft">
-              {n}
-            </p>
-          ))}
+          <Accordion summary="Расширение по гипотезе">{workup.baseSetExtension}</Accordion>
         </div>
-      )}
-    </Card>
+      </div>
+    </Section>
   )
 }

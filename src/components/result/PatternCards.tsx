@@ -1,151 +1,140 @@
 import type { CalculationResult, PatternMatch } from '@/engine'
 import { indicators } from '@/config'
 import { useMitoPassport } from '@/state/MitoPassportContext'
-import { Accordion, Badge, Card, ConfidenceBadge, NEUTRAL_STYLE } from '@/components/ui'
+import { Accordion, Section } from '@/components/ui'
 
-const LEVEL_LABEL: Record<string, string> = {
-  A: 'A · системный контекст',
-  B: 'B · функциональный контур',
-  C: 'C · уровень ограничения',
-  D: 'D · компенсация',
-  E: 'E · сохранный профиль',
+const LEVEL: Record<string, string> = {
+  A: 'системный контекст',
+  B: 'функциональный контур',
+  C: 'уровень ограничения',
+  D: 'компенсация',
+  E: 'сохранный профиль',
 }
 
-function PatternCard({ match, isLeading, hint }: { match: PatternMatch; isLeading: boolean; hint?: string[] }) {
+function Controls({ match, hint }: { match: PatternMatch; hint?: string[] }) {
   const { priorityContext, toggleConfirmedSystemic, toggleExplainedByEvent } = useMitoPassport()
   const p = match.pattern
-  const confirmed = priorityContext.confirmedSystemic.includes(p.id)
   const explained = priorityContext.explainedByEvent.includes(p.id)
-
   return (
-    <Card className={isLeading ? 'ring-2 ring-blue-300' : explained ? 'opacity-60' : ''}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-medium text-ink">
-          {isLeading && <span className="mr-2 text-blue-700">Ведущий ·</span>}
-          {p.manualNumber}. {p.name}
-        </h3>
-        <div className="flex flex-wrap gap-1.5">
-          <Badge style={NEUTRAL_STYLE}>{LEVEL_LABEL[p.level]}</Badge>
-          <ConfidenceBadge confidence={match.confidence} />
-        </div>
-      </div>
-
-      {match.subtype && <p className="mt-2 text-sm font-medium text-ink">{match.subtype}</p>}
-      <p className="mt-2 text-sm leading-relaxed text-ink">{p.clinicalMeaning}</p>
-
-      {match.triggeredIndicators.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {match.triggeredIndicators.map((t) => (
-            <span key={t.id} className="rounded-full bg-panel px-2.5 py-1 text-xs text-ink-soft">
-              {t.label}: {t.zoneLabel}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-ink">
-        {p.level === 'A' && (
-          <label className="inline-flex items-center gap-1.5">
-            <input type="checkbox" checked={confirmed} onChange={() => toggleConfirmedSystemic(p.id)} />
-            Подтверждается клиникой (правило 8)
-          </label>
-        )}
-        <label className="inline-flex items-center gap-1.5">
-          <input type="checkbox" checked={explained} onChange={() => toggleExplainedByEvent(p.id)} />
-          Объясняется недавним событием или условиями забора (правило 7)
+    <div className="no-print grid gap-1.5 text-sm text-ink">
+      {p.level === 'A' && (
+        <label className="flex items-start gap-2">
+          <input className="mt-0.5 h-4 w-4" type="checkbox" checked={priorityContext.confirmedSystemic.includes(p.id)} onChange={() => toggleConfirmedSystemic(p.id)} />
+          Подтверждается клиникой
         </label>
-      </div>
-      {hint && hint.length > 0 && !explained && (
-        <p className="mt-2 text-xs text-amber-800">Может объясняться отмеченным событием: {hint.join('; ').toLowerCase()}. Проверьте правило 7.</p>
       )}
+      <label className="flex items-start gap-2">
+        <input className="mt-0.5 h-4 w-4" type="checkbox" checked={explained} onChange={() => toggleExplainedByEvent(p.id)} />
+        Объясняется недавним событием или условиями забора
+      </label>
+      {hint && hint.length > 0 && !explained && <p className="text-xs text-[#8a4310]">Возможное объяснение: {hint.join('; ').toLowerCase()}.</p>}
+    </div>
+  )
+}
 
-      <Accordion className="mt-4" summary="Подробнее">
-        <dl className="space-y-3">
-          <div>
-            <dt className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Строка для заключения</dt>
-            <dd className="mt-1">{p.conclusionLine}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Механизм</dt>
-            <dd className="mt-1">{p.pathophysiology}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Возможные причины</dt>
-            <dd className="mt-1">{p.possibleCauses.join(', ')}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Ключевые анализы</dt>
-            <dd className="mt-1">{p.whatToCheck.join(', ')}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Приоритет действий</dt>
-            <dd className="mt-1">{p.cautiousStrategy}</dd>
-          </div>
-        </dl>
-      </Accordion>
-    </Card>
+const strategy = (s: string) => s.replace(/^Приоритет\s*[—-]\s*/, '').replace(/^./, (c) => c.toUpperCase())
+
+function Details({ match, collapsed = false }: { match: PatternMatch; collapsed?: boolean }) {
+  const p = match.pattern
+  const more = (
+    <>
+      <p>Механизм: {p.pathophysiology}</p>
+      <p>Исключить прежде всего: {p.excludeFirst.charAt(0).toLowerCase() + p.excludeFirst.slice(1)}.</p>
+      <p>Ключевые анализы: {p.whatToCheck.join(', ')}.</p>
+      {match.triggeredIndicators.length > 0 && <p className="text-xs">Основание: {match.triggeredIndicators.map((t) => `${t.label} (${t.zoneLabel.toLowerCase()})`).join(', ')}.</p>}
+    </>
+  )
+  return (
+    <div className="grid gap-2 text-sm leading-relaxed text-ink-soft">
+      <p className="text-ink">{p.clinicalMeaning}</p>
+      <p>Приоритет действий: {strategy(p.cautiousStrategy)}</p>
+      {collapsed ? <Accordion summary="Механизм, что исключить, анализы">{<div className="grid gap-2">{more}</div>}</Accordion> : more}
+    </div>
   )
 }
 
 export function PatternCards({ result }: { result: CalculationResult }) {
   const { priority } = result
-  const ordered = [
-    ...(priority.leading ? [priority.leading] : []),
-    ...priority.manifestations,
-    ...priority.explainedByEvent,
-  ]
+  const hints = (id: string) => result.study.preanalytics.rule7Hints.find((h) => h.patternId === id)?.reasons
+  const lead = priority.leading
+  const rest = [...priority.manifestations, ...priority.explainedByEvent]
 
   return (
-    <div className="mb-6">
-      <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-soft uppercase">Паттерны</h2>
-
-      <Card className="mb-3">
-        <p className="text-sm leading-relaxed text-ink">{priority.leadingReason}</p>
-        {priority.appliedRules.length > 0 && (
-          <ul className="mt-2 space-y-1 text-xs leading-relaxed text-ink-soft">
-            {priority.appliedRules.map((rule) => (
-              <li key={rule}>{rule}</li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      {ordered.length === 0 ? (
-        <Card>
-          <p className="text-sm text-ink-soft">Активированных паттернов по введённым показателям нет.</p>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {ordered.map((match) => (
-            <PatternCard
-              key={match.pattern.id}
-              match={match}
-              isLeading={match === priority.leading}
-              hint={result.study.preanalytics.rule7Hints.find((h) => h.patternId === match.pattern.id)?.reasons}
-            />
-          ))}
+    <Section id="patterns" title="Паттерны" aside={`активно: ${result.patternMatches.length}`}>
+      {lead && (
+        <div className="border border-line border-t-[3px] border-t-brand bg-paper p-5">
+          <p className="text-sm text-brand">
+            Ведущий · уровень {lead.pattern.level}, {LEVEL[lead.pattern.level]}
+          </p>
+          <p className="mt-1 text-lg font-semibold tracking-tight text-ink">
+            {lead.pattern.manualNumber}. {lead.pattern.name}
+          </p>
+          {lead.subtype && <p className="mt-0.5 text-sm text-ink-soft">{lead.subtype}</p>}
+          <div className="mt-3">
+            <Details match={lead} collapsed />
+          </div>
+          <div className="mt-4 border-t border-line-soft pt-3">
+            <Controls match={lead} hint={hints(lead.pattern.id)} />
+          </div>
         </div>
       )}
 
-      {result.notEvaluatedPatterns.length > 0 && (
-        <Card className="mt-3">
-          <h3 className="text-sm font-medium text-ink">Не оценены при данном объёме исследования</h3>
-          <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-            Для этих паттернов не хватает измеренных показателей. Они не подтверждены и не исключены (правило 6).
-          </p>
-          <ul className="mt-3 space-y-1.5 text-sm text-ink">
-            {result.notEvaluatedPatterns.map((item) => (
-              <li key={item.pattern.id}>
-                {item.pattern.manualNumber}. {item.pattern.name}
-                <span className="text-xs text-ink-soft">
-                  {' '}
-                  (нет данных: {item.missingIndicatorIds.map((id) => indicators[id].shortLabel).join(', ')})
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+      {rest.length > 0 && (
+        <div className="mt-4 bg-paper px-4 sm:px-5">
+          {rest.map((m) => {
+            const explained = priority.explainedByEvent.includes(m)
+            return (
+              <details key={m.pattern.id} className={`group border-b border-line-soft last:border-0 ${explained ? 'opacity-60' : ''}`}>
+                <summary className="flex cursor-pointer items-baseline gap-3 py-3 select-none">
+                  <svg className="h-3 w-3 shrink-0 self-center text-ink-faint transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path d="M7.5 5 12.5 10 7.5 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="w-6 shrink-0 text-sm text-ink-faint">{m.pattern.manualNumber}</span>
+                  <span className="min-w-0 flex-1 text-sm text-ink">
+                    {m.pattern.name}
+                    {m.subtype && <span className="text-ink-soft"> — {m.subtype.charAt(0).toLowerCase() + m.subtype.slice(1)}</span>}
+                  </span>
+                  <span className="hidden shrink-0 text-xs text-ink-faint sm:inline">
+                    {explained ? 'объяснён событием' : `${m.pattern.level}, ${LEVEL[m.pattern.level]}`}
+                  </span>
+                  {hints(m.pattern.id) && !explained && <span className="h-1.5 w-1.5 shrink-0 self-center rounded-full bg-zone-moderate" title="Может объясняться событием" />}
+                </summary>
+                <div className="grid gap-3 pb-4 pl-12">
+                  <Details match={m} />
+                  <Controls match={m} hint={hints(m.pattern.id)} />
+                </div>
+              </details>
+            )
+          })}
+        </div>
       )}
-    </div>
+
+      {!lead && rest.length === 0 && <p className="bg-paper p-5 text-sm text-ink-soft">Активированных паттернов нет.</p>}
+
+      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+        <Accordion summary="Как выбран ведущий">
+          <p>{priority.leadingReason}</p>
+          {priority.appliedRules.length > 0 && (
+            <ul className="mt-2 grid gap-1">
+              {priority.appliedRules.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          )}
+        </Accordion>
+        {result.notEvaluatedPatterns.length > 0 && (
+          <Accordion summary={`Не оценены: ${result.notEvaluatedPatterns.length}`}>
+            <p>Не хватает измеренных показателей: паттерны не подтверждены и не исключены.</p>
+            <ul className="mt-2 grid gap-1">
+              {result.notEvaluatedPatterns.map((n) => (
+                <li key={n.pattern.id}>
+                  {n.pattern.manualNumber}. {n.pattern.name} — нет: {n.missingIndicatorIds.map((id) => indicators[id].shortLabel).join(', ')}
+                </li>
+              ))}
+            </ul>
+          </Accordion>
+        )}
+      </div>
+    </Section>
   )
 }

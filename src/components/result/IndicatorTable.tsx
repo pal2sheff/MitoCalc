@@ -1,83 +1,69 @@
-import type { CalculationResult } from '@/engine'
-import { Card, RiskBadge } from '@/components/ui'
+import type { CalculationResult, IndicatorResult } from '@/engine'
+import { riskScoreToColor } from '@/engine'
+import { referenceRanges } from '@/config'
+import { Accordion, Section, ZONE_COLOR_STYLES, ZoneScale } from '@/components/ui'
+
+function Row({ r }: { r: IndicatorResult }) {
+  const style = ZONE_COLOR_STYLES[riskScoreToColor(r.riskScore)]
+  const blank = r.zone.blankNote ?? r.definition.blankNote
+  const value = r.definition.valueType === 'deltaNadh' ? (r.value > 0 ? `+${r.value}` : r.value < 0 ? `−${Math.abs(r.value)}` : '0') : `${r.value} %`
+
+  return (
+    <details className="group border-b border-line-soft last:border-0">
+      <summary className="grid cursor-pointer grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-x-4 py-3 select-none sm:grid-cols-[minmax(0,14rem)_4.5rem_minmax(0,1fr)_10rem]">
+        <span className="flex items-center gap-1.5 text-sm text-ink">
+          <svg className="h-3 w-3 shrink-0 text-ink-faint transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+            <path d="M7.5 5 12.5 10 7.5 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {r.definition.shortLabel}
+          {blank && <span className="h-1.5 w-1.5 rounded-full bg-zone-mild" title="Есть замечание к формулировке бланка" />}
+        </span>
+        <span className="text-right text-[15px] font-medium text-ink">{value}</span>
+        <span className="col-span-2 sm:col-span-1">
+          <ZoneScale value={r.value} config={referenceRanges[r.id]} valueType={r.definition.valueType} />
+        </span>
+        <span className={`col-span-2 text-sm sm:col-span-1 ${style.text}`}>{r.zone.label}</span>
+      </summary>
+      <div className="grid gap-1.5 pb-4 pl-5 text-sm leading-relaxed text-ink-soft sm:max-w-3xl">
+        <p className="text-ink">{r.zone.meaning}</p>
+        {r.zone.firstAction && <p>Первое действие: {r.zone.firstAction}</p>}
+        {blank && <p className="text-[#6e5310]">{blank}</p>}
+        {r.definition.typicalError && <p>Типичная ошибка: {r.definition.typicalError}</p>}
+        {r.definition.temporaryFactors && <p>Может измениться временно: {r.definition.temporaryFactors}</p>}
+      </div>
+    </details>
+  )
+}
 
 export function IndicatorTable({ result }: { result: CalculationResult }) {
+  const base = result.indicatorResults.filter((r) => r.definition.valueType !== 'deltaNadh')
+  const probes = result.indicatorResults.filter((r) => r.definition.valueType === 'deltaNadh')
   return (
-    <Card className="mb-6">
-      <h2 className="mb-4 text-sm font-semibold tracking-wide text-ink-soft uppercase">Показатели</h2>
-
-      {result.indicatorResults.length === 0 ? (
-        <p className="text-sm text-ink-soft">Показатели не введены.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-xs text-ink-soft">
-                <th className="py-2 pr-3 font-medium">Показатель</th>
-                <th className="py-2 pr-3 font-medium">Значение</th>
-                <th className="py-2 pr-3 font-medium">Зона</th>
-                <th className="py-2 font-medium">Клиническое значение</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.indicatorResults.map((r) => {
-                const blank = r.zone.blankNote ?? r.definition.blankNote
-                const extra = r.definition.typicalError || r.definition.temporaryFactors
-                return (
-                  <tr key={r.id} className="border-b border-line/60 align-top last:border-0">
-                    <td className="py-2.5 pr-3 font-medium text-ink">{r.definition.shortLabel}</td>
-                    <td className="py-2.5 pr-3 whitespace-nowrap text-ink-soft">
-                      {r.value} {r.definition.unit}
-                    </td>
-                    <td className="py-2.5 pr-3">
-                      <RiskBadge riskScore={r.riskScore}>{r.zone.label}</RiskBadge>
-                    </td>
-                    <td className="py-2.5 text-ink-soft">
-                      <p>{r.zone.meaning}</p>
-                      {r.zone.firstAction && (
-                        <p className="mt-1 text-ink">
-                          <span className="font-medium">Первое действие: </span>
-                          {r.zone.firstAction}
-                        </p>
-                      )}
-                      {blank && <p className="mt-1 text-xs text-amber-800">{blank}</p>}
-                      {extra && (
-                        <details className="mt-1 text-xs">
-                          <summary className="cursor-pointer text-ink-soft">Ошибки трактовки и временные влияния</summary>
-                          {r.definition.typicalError && (
-                            <p className="mt-1">
-                              <span className="font-medium text-ink">Типичная ошибка: </span>
-                              {r.definition.typicalError}
-                            </p>
-                          )}
-                          {r.definition.temporaryFactors && (
-                            <p className="mt-1">
-                              <span className="font-medium text-ink">Может измениться временно: </span>
-                              {r.definition.temporaryFactors}
-                            </p>
-                          )}
-                        </details>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+    <Section id="indicators" title="Показатели" aside="нажмите на строку, чтобы раскрыть пояснение">
+      <div className="bg-paper px-4 sm:px-5">
+        {base.map((r) => (
+          <Row key={r.id} r={r} />
+        ))}
+      </div>
+      {probes.length > 0 && (
+        <>
+          <p className="mt-5 mb-1 text-sm text-ink-soft">Функциональные пробы, ΔНАДН</p>
+          <div className="bg-paper px-4 sm:px-5">
+            {probes.map((r) => (
+              <Row key={r.id} r={r} />
+            ))}
+          </div>
+        </>
       )}
-
       {result.pairHints.length > 0 && (
-        <div className="mt-5 border-t border-line pt-4">
-          <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">Сочетания показателей (глава 3)</p>
-          <p className="mt-1 text-xs text-ink-soft">Первые гипотезы для разбора. Ведущий механизм выбирается по контурам и паттернам ниже.</p>
-          <ul className="mt-2 space-y-1.5 text-sm text-ink">
+        <Accordion className="mt-4" summary={`Сочетания показателей: ${result.pairHints.length}`}>
+          <ul className="grid gap-1.5">
             {result.pairHints.map((h) => (
               <li key={h.id}>{h.text}</li>
             ))}
           </ul>
-        </div>
+        </Accordion>
       )}
-    </Card>
+    </Section>
   )
 }
