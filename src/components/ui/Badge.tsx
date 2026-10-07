@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import type { DomainCategory, OverallRiskLevel, PatternConfidence, RiskScore, SafetyFlagLevel } from '@/engine'
-import { domainCategoryToColor, overallRiskLevelToColor, riskScoreToColor } from '@/engine'
+import type { ContourSeverity, OverallRiskLevel, PatternConfidence, RiskScore, SafetyFlagLevel } from '@/engine'
+import { contourSeverityToColor, overallRiskLevelToColor, riskScoreToColor } from '@/engine'
 import { CONFIDENCE_STYLES, SAFETY_LEVEL_STYLES, ZONE_COLOR_STYLES, type ColorStyle } from './colorStyles'
 
 export function Badge({ style, children, className = '' }: { style: ColorStyle; children: ReactNode; className?: string }) {
@@ -19,9 +19,9 @@ export function RiskBadge({ riskScore, children }: { riskScore: RiskScore; child
   return <Badge style={ZONE_COLOR_STYLES[riskScoreToColor(riskScore)]}>{children}</Badge>
 }
 
-/** For a domain's aggregated category, e.g. "выраженное нарушение". */
-export function DomainCategoryBadge({ category }: { category: DomainCategory }) {
-  return <Badge style={ZONE_COLOR_STYLES[domainCategoryToColor(category)]}>{category}</Badge>
+/** Состояние функционального контура, цвет по тяжести. */
+export function ContourStateBadge({ severity, children }: { severity: ContourSeverity; children: ReactNode }) {
+  return <Badge style={ZONE_COLOR_STYLES[contourSeverityToColor(severity)]}>{children}</Badge>
 }
 
 /** For a pattern's confidence, e.g. "высокая". Deliberately not risk-colored — see colorStyles.ts. */

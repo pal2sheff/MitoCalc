@@ -1,29 +1,15 @@
-import type { DomainCategory, DomainResult, OverallRiskLevel, PatternMatch, SafetyFlag } from './types'
-
-const DOMAIN_CATEGORY_RANK: Record<DomainCategory, number> = {
-  'норма': 0,
-  'умеренное напряжение': 1,
-  'выраженное нарушение': 2,
-  'критический паттерн': 3,
-}
+import type { ContourResult, OverallRiskLevel, SafetyFlag } from './types'
 
 /**
- * Integral risk level: escalates from the worst domain category and the
- * strongest triggered pattern, with any critical safety flag forcing the
- * top tier regardless of domain/pattern numbers.
+ * Интегральная степень изменений по контурам. Пособие такой шкалы не задаёт:
+ * это сводка для экрана калькулятора, а не клиническая категория.
+ * Критический флаг безопасности поднимает уровень независимо от контуров.
  */
-export function calculateOverallRisk(
-  domainResults: DomainResult[],
-  patternMatches: PatternMatch[],
-  safetyFlags: SafetyFlag[],
-): OverallRiskLevel {
-  const hasCriticalFlag = safetyFlags.some((f) => f.level === 'critical')
-  const maxDomainRank = domainResults.reduce((max, d) => Math.max(max, DOMAIN_CATEGORY_RANK[d.category]), 0)
-  const hasHighConfidencePattern = patternMatches.some((p) => p.confidence === 'высокая')
-  const hasMediumConfidencePattern = patternMatches.some((p) => p.confidence === 'средняя')
-
-  if (hasCriticalFlag || maxDomainRank >= 3) return 'критический риск'
-  if (maxDomainRank === 2 || hasHighConfidencePattern) return 'высокий риск'
-  if (maxDomainRank === 1 || hasMediumConfidencePattern) return 'умеренный риск'
+export function calculateOverallRisk(contours: ContourResult[], safetyFlags: SafetyFlag[]): OverallRiskLevel {
+  if (safetyFlags.some((f) => f.level === 'critical')) return 'критический риск'
+  const max = contours.reduce((m, c) => Math.max(m, c.state?.severity ?? 0), 0)
+  const changedCount = contours.filter((c) => (c.state?.severity ?? 0) >= 2).length
+  if (max >= 3 || changedCount >= 3) return 'высокий риск'
+  if (max === 2) return 'умеренный риск'
   return 'норма'
 }

@@ -19,7 +19,7 @@ function isLeaf(node: ConditionNode): node is IndicatorCondition {
 
 function evaluateLeaf(condition: IndicatorCondition, results: IndicatorResultMap): TriState {
   const result = results[condition.indicator]
-  if (!result) return null
+  if (!result) return condition.ifMeasured ? true : null
   if (condition.zoneIn && !condition.zoneIn.includes(result.zone.id)) return false
   if (condition.riskScoreMin !== undefined && result.riskScore < condition.riskScoreMin) return false
   return true

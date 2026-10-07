@@ -3,7 +3,7 @@ import { useMitoPassport } from '@/state/MitoPassportContext'
 import { Button } from '@/components/ui'
 import { SummaryHeader } from '@/components/result/SummaryHeader'
 import { IndicatorTable } from '@/components/result/IndicatorTable'
-import { DomainCards } from '@/components/result/DomainCards'
+import { ContourCards } from '@/components/result/ContourCards'
 import { PatternCards } from '@/components/result/PatternCards'
 import { NarrativeBlock } from '@/components/result/NarrativeBlock'
 import { SafetyBlock } from '@/components/result/SafetyBlock'
@@ -25,7 +25,7 @@ export function ResultPage() {
 
       <SummaryHeader result={result} />
       <IndicatorTable result={result} />
-      <DomainCards result={result} />
+      <ContourCards result={result} />
       <PatternCards result={result} />
       <NarrativeBlock result={result} />
       <SafetyBlock result={result} />

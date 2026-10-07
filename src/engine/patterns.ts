@@ -14,7 +14,6 @@ function confidenceFromRatio(ratio: number): PatternConfidence {
   return 'низкая'
 }
 
-const CONFIDENCE_RANK: Record<PatternConfidence, number> = { 'высокая': 3, 'средняя': 2, 'низкая': 1 }
 
 function buildTriggeredIndicators(
   leaves: IndicatorCondition[],
@@ -84,16 +83,13 @@ export function detectPatterns(indicatorResults: IndicatorResult[], patternDefs:
       confidence: confidenceFromRatio(supportRatio),
       triggeredIndicators: buildTriggeredIndicators(leaves, resultMap),
       supportRatio,
+      subtype: pattern.subtypes?.find((st) => evaluateCondition(st.when, resultMap))?.label ?? null,
     })
   }
 
-  matches.sort((a, b) => {
-    if (CONFIDENCE_RANK[b.confidence] !== CONFIDENCE_RANK[a.confidence]) {
-      return CONFIDENCE_RANK[b.confidence] - CONFIDENCE_RANK[a.confidence]
-    }
-    if (b.supportRatio !== a.supportRatio) return b.supportRatio - a.supportRatio
-    return a.pattern.order - b.pattern.order
-  })
+  // Порядок уровней по разделу 6.3: A → B → C → D → E, внутри уровня по номеру пособия.
+  matches.sort((a, b) => a.pattern.level.localeCompare(b.pattern.level) || a.pattern.order - b.pattern.order)
+  notEvaluated.sort((a, b) => a.pattern.order - b.pattern.order)
 
   return { matches, notEvaluated }
 }

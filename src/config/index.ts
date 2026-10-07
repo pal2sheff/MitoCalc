@@ -1,7 +1,7 @@
 import type { CalculationConfig } from '@/engine'
 import { block1Indicators, block2Indicators, indicatorList, indicators } from './indicators'
 import { referenceRanges } from './referenceRanges'
-import { domains, domainCategories } from './domains'
+import { contours } from './contours'
 import { patterns } from './patterns'
 import { dynamicSafetyRules, staticSafetyNotes } from './safetyRules'
 import { exampleInputs } from './example'
@@ -12,8 +12,7 @@ export {
   block1Indicators,
   block2Indicators,
   referenceRanges,
-  domains,
-  domainCategories,
+  contours,
   patterns,
   dynamicSafetyRules,
   staticSafetyNotes,
@@ -24,7 +23,7 @@ export {
 export const calculationConfig: CalculationConfig = {
   indicatorList,
   referenceRanges,
-  domains,
+  contours,
   patterns,
   safetyRules: dynamicSafetyRules,
   staticSafetyNotes,

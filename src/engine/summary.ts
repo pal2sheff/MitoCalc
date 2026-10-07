@@ -1,54 +1,57 @@
-import type { DomainResult, OverallRiskLevel, PatternMatch } from './types'
+import type { ContourResult, LeadingContour, PatternPriority } from './types'
 
 export interface ClinicalSummary {
   briefConclusion: string
   narrativeText: string
 }
 
+const CLINICAL_CHECK =
+  'Вывод является функциональной гипотезой и требует сопоставления с жалобами, анамнезом, осмотром и стандартными анализами.'
+
 /**
- * Level 3 wrap-up: turns the already-computed lead domain + top patterns
- * into hedged, physician-facing text. Reads only `PatternMatch.pattern`
- * (data already resolved by `detectPatterns`), so no config import is
- * needed here — keeps the engine decoupled from `src/config`.
+ * Формулировка вывода по разделу 6.3: один ведущий паттерн, далее его
+ * проявления, далее направление поиска. Ведущий контур (раздел 5.4) задаёт
+ * направление поиска причины.
  */
 export function generateClinicalSummary(
-  overallRiskLevel: OverallRiskLevel,
-  leadDomain: DomainResult | null,
-  topPatterns: PatternMatch[],
+  priority: PatternPriority,
+  leadingContour: LeadingContour | null,
+  contours: ContourResult[],
 ): ClinicalSummary {
-  if (topPatterns.length === 0) {
-    const briefConclusion = leadDomain
-      ? `Выраженных клинических паттернов не выявлено. Основное направление внимания — домен «${leadDomain.label}» (${leadDomain.category}).`
-      : 'Выраженных отклонений и клинических паттернов не выявлено. Показатели МИТО-паспорта преимущественно в пределах рабочих диапазонов.'
+  const { leading, manifestations } = priority
 
-    const narrativeText = leadDomain
-      ? `По данным МИТО-паспорта чётко выраженных клинических паттернов не определяется. Наибольшее напряжение отмечается в домене «${leadDomain.label}»: ${leadDomain.interpretation} Рекомендуется сопоставить с жалобами, анамнезом, объективным осмотром, образом жизни (сон, питание, нагрузка, восстановление) и стандартными лабораторными показателями перед формированием клинических выводов.`
-      : 'По данным МИТО-паспорта значимых отклонений и клинических паттернов не определяется. Это не исключает необходимости клинической оценки при наличии жалоб — результат следует сопоставлять с анамнезом, осмотром и стандартными методами диагностики.'
-
-    return { briefConclusion, narrativeText }
-  }
-
-  const [leadMatch, ...otherMatches] = topPatterns
-  const lead = leadMatch.pattern
-
-  const briefConclusion =
-    `Ведущий паттерн: «${lead.name}» (уверенность: ${leadMatch.confidence})` +
-    `${leadDomain ? `, основной домен напряжения — «${leadDomain.label}»` : ''}.` +
-    ` Общий уровень риска: ${overallRiskLevel}.`
-
-  const otherPatternsText =
-    otherMatches.length > 0
-      ? ` Также обращают на себя внимание: ${otherMatches.map((m) => `«${m.pattern.name}» (уверенность: ${m.confidence})`).join(', ')}.`
+  const notEvaluatedContours = contours.filter((c) => c.status === 'не оценён').map((c) => c.label)
+  const notEvaluatedText =
+    notEvaluatedContours.length > 0
+      ? ` Не оценивались, объём исследования их не включает: ${notEvaluatedContours.join(', ')}.`
       : ''
 
+  const contourText = leadingContour
+    ? ` Ведущий контур: ${leadingContour.contour.label} (${leadingContour.contour.state?.label}). Направление поиска: ${leadingContour.contour.searchDirection}`
+    : ''
+
+  if (!leading) {
+    const briefConclusion = `${priority.leadingReason}${contourText}`
+    return {
+      briefConclusion,
+      narrativeText: `${briefConclusion}${notEvaluatedText} ${CLINICAL_CHECK}`,
+    }
+  }
+
+  const leadName = leading.subtype ? `${leading.pattern.name} (${leading.subtype})` : leading.pattern.name
+  const withText =
+    manifestations.length > 0 ? `. Проявления и уточнения: ${manifestations.map((m) => `${m.pattern.manualNumber}. ${m.pattern.name}`).join('; ')}` : ''
+
+  const systemicText =
+    priority.unconfirmedSystemic.length > 0 && leading.pattern.level !== 'A'
+      ? ' Системный контекст не установлен: паттерны уровня A клиникой не подтверждены.'
+      : ''
+
+  const briefConclusion = `Ведущий паттерн: ${leadName}${withText}.${systemicText}${contourText}`
+
   const narrativeText =
-    `По данным МИТО-паспорта определяется паттерн «${lead.name}» (уверенность: ${leadMatch.confidence}). ` +
-    `${lead.clinicalMeaning} ` +
-    `Это может отражать следующие механизмы: ${lead.pathophysiology} ` +
-    `Возможные причины: ${lead.possibleCauses.join(', ')}. ` +
-    `Наиболее вероятные направления поиска: ${lead.whatToCheck.join(', ')}.` +
-    `${otherPatternsText} ` +
-    `Рекомендуется сопоставить с жалобами, анамнезом, объективным осмотром, образом жизни (сон, питание, нагрузка, восстановление) и стандартными лабораторными показателями перед формированием клинических выводов. ${lead.cautiousStrategy}`
+    `${leading.pattern.conclusionLine}${systemicText}${contourText}${notEvaluatedText} ` +
+    `${CLINICAL_CHECK} Приоритет действий: ${leading.pattern.cautiousStrategy}`
 
   return { briefConclusion, narrativeText }
 }

@@ -31,3 +31,6 @@ export const SAFETY_LEVEL_STYLES: Record<SafetyFlagLevel, ColorStyle> = {
   warning: { text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', dot: 'bg-amber-500' },
   critical: { text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-300', dot: 'bg-red-500' },
 }
+
+/** Нейтральная плашка: «не оценён», уровень паттерна и т. п. */
+export const NEUTRAL_STYLE: ColorStyle = { text: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200', dot: 'bg-slate-400' }

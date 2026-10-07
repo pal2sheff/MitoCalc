@@ -1,7 +1,7 @@
-import type { DomainCategory, OverallRiskLevel, RiskScore, ZoneColor } from './types'
+import type { ContourSeverity, OverallRiskLevel, RiskScore, ZoneColor } from './types'
 
 /**
- * Presentation mapping only (not a medical judgement): risk score and domain
+ * Presentation mapping only (not a medical judgement): risk score and contour
  * category always render with the same colour across the app. Kept separate
  * from `src/config` because it is a UI invariant, not an editable clinical
  * threshold.
@@ -17,15 +17,9 @@ export function riskScoreToColor(riskScore: RiskScore): ZoneColor {
   return RISK_SCORE_COLOR[riskScore]
 }
 
-export const DOMAIN_CATEGORY_COLOR: Record<DomainCategory, ZoneColor> = {
-  'норма': 'green',
-  'умеренное напряжение': 'yellow',
-  'выраженное нарушение': 'orange',
-  'критический паттерн': 'red',
-}
-
-export function domainCategoryToColor(category: DomainCategory): ZoneColor {
-  return DOMAIN_CATEGORY_COLOR[category]
+/** Цвет состояния контура: 0 зелёный … 3 красный. */
+export function contourSeverityToColor(severity: ContourSeverity): ZoneColor {
+  return RISK_SCORE_COLOR[severity]
 }
 
 export const OVERALL_RISK_COLOR: Record<OverallRiskLevel, ZoneColor> = {

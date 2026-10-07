@@ -87,38 +87,64 @@ export interface IndicatorResult {
   riskScore: RiskScore
 }
 
-export type DomainCategory =
-  | 'норма'
-  | 'умеренное напряжение'
-  | 'выраженное нарушение'
-  | 'критический паттерн'
+/** Тяжесть состояния контура: 0 сохранён, 1 наблюдение, 2 изменён, 3 выраженно изменён. */
+export type ContourSeverity = 0 | 1 | 2 | 3
 
-export interface DomainDefinition {
+export interface ContourStateRule {
+  id: string
+  label: string
+  severity: ContourSeverity
+  when: ConditionNode
+  /** Пояснение к состоянию, как в таблицах раздела 5.1. */
+  text: string
+}
+
+export interface ContourNoteRule {
+  when: ConditionNode
+  text: string
+}
+
+/** Функциональный контур (глава 5 пособия). */
+export interface ContourDefinition {
   id: string
   order: number
   label: string
-  indicatorIds: IndicatorId[]
-  /** Shown under the domain title — what this domain represents clinically. */
-  description: string
-  /** Template fragments used to build interpretation text per category. */
-  interpretationByCategory: Record<DomainCategory, string>
-  nextStep: string
+  /** На какой вопрос отвечает контур. */
+  question: string
+  /** К — ключевые показатели по матрице 5.2. */
+  keyIndicators: IndicatorId[]
+  /** д — дополнительные показатели по матрице 5.2. */
+  additionalIndicators: IndicatorId[]
+  /** Без этих показателей контур не собирается (раздел 5.6). */
+  requiredIndicators: IndicatorId[]
+  /** Состояния в порядке проверки: срабатывает первое выполненное. */
+  states: ContourStateRule[]
+  /** Отдельные находки внутри контура (например, редокс-иммунное рассогласование). */
+  notes?: ContourNoteRule[]
+  /** Направление поиска, если контур ведущий (раздел 5.4). */
+  searchDirection: string
 }
 
-export interface DomainResult {
+export type ContourStatus = 'оценён' | 'оценён частично' | 'не оценён'
+
+export interface ContourResult {
   id: string
   label: string
-  description: string
-  indicatorIds: IndicatorId[]
-  avgRisk: number
-  maxRisk: RiskScore
-  category: DomainCategory
-  interpretation: string
-  nextStep: string
-  /** false — ни один показатель домена не измерен: домен не оценён, а не «в норме». */
-  evaluated: boolean
-  /** Показатели домена, отсутствующие в отчёте (оценка неполная, если список не пуст). */
+  question: string
+  status: ContourStatus
+  /** null, если контур не оценён. */
+  state: { id: string; label: string; severity: ContourSeverity; text: string } | null
   missingIndicatorIds: IndicatorId[]
+  /** Показатели контура вне целевой зоны или с отклонённой пробой. */
+  deviatedIndicators: { id: IndicatorId; label: string; zoneLabel: string }[]
+  notes: string[]
+  searchDirection: string
+}
+
+export interface LeadingContour {
+  contour: ContourResult
+  /** Какой ориентир раздела 5.4 сработал. */
+  reason: string
 }
 
 /** A single leaf condition evaluated against one indicator's computed result. */
@@ -128,6 +154,12 @@ export interface IndicatorCondition {
   zoneIn?: string[]
   /** Matches if riskScore >= this threshold (any deviation from the calm/optimal/neutral zone is riskScoreMin: 1). */
   riskScoreMin?: RiskScore
+  /**
+   * Необязательный компонент: если показатель не измерен, условие считается
+   * выполненным. Нужен для состояний контуров, которые по пособию собираются
+   * и при неполном объёме (раздел 5.6), например иммунный контур без кальция.
+   */
+  ifMeasured?: boolean
 }
 
 export interface ConditionGroupAll {
@@ -148,10 +180,29 @@ export type ConditionNode =
 
 export type PatternConfidence = 'низкая' | 'средняя' | 'высокая'
 
+/**
+ * Уровень паттерна по разделу 6.3:
+ * A системный контекст, B функциональный контур, C уровень ограничения,
+ * D компенсация и резерв, E сохранный профиль.
+ */
+export type PatternLevel = 'A' | 'B' | 'C' | 'D' | 'E'
+
+export interface PatternSubtypeRule {
+  label: string
+  when: ConditionNode
+}
+
 export interface PatternDefinition {
   id: string
   order: number
+  /** Номер паттерна в пособии (1–15). */
+  manualNumber: number
+  level: PatternLevel
   name: string
+  /** «Строка для заключения» из карточки паттерна. */
+  conclusionLine: string
+  /** Глубина или стадия: проверяются по порядку, берётся первая выполненная. */
+  subtypes?: PatternSubtypeRule[]
   /** Must hold for the pattern to be considered triggered at all. */
   requiredConditions: ConditionNode
   /**
@@ -179,12 +230,36 @@ export interface PatternMatch {
     value: number
   }[]
   supportRatio: number
+  /** Глубина или стадия паттерна, если определяется по показателям. */
+  subtype: string | null
 }
 
 /** Паттерн, который при данном объёме исследования нельзя ни подтвердить, ни исключить. */
 export interface NotEvaluatedPattern {
   pattern: PatternDefinition
   missingIndicatorIds: IndicatorId[]
+}
+
+/** Клинические отметки врача, влияющие на выбор ведущего паттерна (правила 7 и 8). */
+export interface PriorityContext {
+  /** Паттерны уровня A, подтверждённые клиникой (правило 8). */
+  confirmedSystemic: string[]
+  /** Паттерны, полностью объяснимые условиями забора или недавним событием (правило 7). */
+  explainedByEvent: string[]
+}
+
+export interface PatternPriority {
+  leading: PatternMatch | null
+  /** Почему выбран именно этот паттерн (или почему ведущего нет). */
+  leadingReason: string
+  /** Остальные активные паттерны: проявления и уточнения ведущего. */
+  manifestations: PatternMatch[]
+  /** Активные паттерны уровня A без подтверждения клиникой. */
+  unconfirmedSystemic: PatternMatch[]
+  /** Исключённые из выбора ведущего по правилу 7. */
+  explainedByEvent: PatternMatch[]
+  /** Применённые правила, в виде строк для врача. */
+  appliedRules: string[]
 }
 
 export type SafetyFlagLevel = 'info' | 'warning' | 'critical'
@@ -210,13 +285,16 @@ export type OverallRiskLevel = 'норма' | 'умеренный риск' | '�
 
 export interface CalculationResult {
   indicatorResults: IndicatorResult[]
-  domainResults: DomainResult[]
-  /** All triggered patterns, sorted by confidence desc, then order. */
+  /** Шесть функциональных контуров (глава 5). */
+  contourResults: ContourResult[]
+  /** Ведущий контур по ориентирам раздела 5.4; null, если изменённых контуров нет. */
+  leadingContour: LeadingContour | null
+  /** Все активированные паттерны в порядке уровня A→E, внутри уровня по номеру. */
   patternMatches: PatternMatch[]
-  topPatterns: PatternMatch[]
+  /** Выбор ведущего паттерна по правилам раздела 6.3. */
+  priority: PatternPriority
   /** Паттерны без оценки из-за неполного объёма исследования (правило 6 раздела 6.3). */
   notEvaluatedPatterns: NotEvaluatedPattern[]
-  leadDomain: DomainResult | null
   overallRiskLevel: OverallRiskLevel
   briefConclusion: string
   narrativeText: string

@@ -1,18 +1,20 @@
 import type {
   CalculationResult,
-  DomainDefinition,
+  ContourDefinition,
   IndicatorDefinition,
   IndicatorId,
   IndicatorInputs,
   IndicatorReferenceConfig,
   IndicatorResult,
   PatternDefinition,
+  PriorityContext,
   SafetyRuleDefinition,
 } from './types'
 import { normalizeIndicator } from './normalize'
 import { getRiskScore, getZone } from './zones'
-import { calculateDomains } from './domains'
+import { calculateContours, selectLeadingContour } from './contours'
 import { detectPatterns } from './patterns'
+import { emptyPriorityContext, selectLeadingPattern } from './priority'
 import { detectSafetyFlags } from './safety'
 import { calculateOverallRisk } from './risk'
 import { generateClinicalSummary } from './summary'
@@ -25,14 +27,21 @@ import { generateClinicalSummary } from './summary'
 export interface CalculationConfig {
   indicatorList: IndicatorDefinition[]
   referenceRanges: Record<IndicatorId, IndicatorReferenceConfig>
-  domains: DomainDefinition[]
+  contours: ContourDefinition[]
   patterns: PatternDefinition[]
   safetyRules: SafetyRuleDefinition[]
   staticSafetyNotes: CalculationResult['generalSafetyNotes']
 }
 
-/** Top-level pipeline: raw form inputs -> full three-level clinical interpretation. */
-export function runCalculation(inputs: IndicatorInputs, config: CalculationConfig): CalculationResult {
+/**
+ * Конвейер: показатели → контуры (гл. 5) → паттерны и выбор ведущего (гл. 6).
+ * context — клинические отметки врача для правил 7 и 8 раздела 6.3.
+ */
+export function runCalculation(
+  inputs: IndicatorInputs,
+  config: CalculationConfig,
+  context: PriorityContext = emptyPriorityContext,
+): CalculationResult {
   const indicatorResults: IndicatorResult[] = []
 
   for (const definition of config.indicatorList) {
@@ -43,22 +52,22 @@ export function runCalculation(inputs: IndicatorInputs, config: CalculationConfi
     indicatorResults.push({ id: definition.id, definition, value: normalized, zone, riskScore: getRiskScore(zone) })
   }
 
-  const domainResults = calculateDomains(indicatorResults, config.domains)
+  const contourResults = calculateContours(indicatorResults, config.contours)
+  const leadingContour = selectLeadingContour(contourResults)
   const { matches: patternMatches, notEvaluated: notEvaluatedPatterns } = detectPatterns(indicatorResults, config.patterns)
+  const priority = selectLeadingPattern(patternMatches, context)
   const safetyFlags = detectSafetyFlags(indicatorResults, config.safetyRules)
 
-  const topPatterns = patternMatches.slice(0, 3)
-  const leadDomain = domainResults.find((d) => d.evaluated && d.avgRisk > 0) ?? null
-  const overallRiskLevel = calculateOverallRisk(domainResults, patternMatches, safetyFlags)
-  const { briefConclusion, narrativeText } = generateClinicalSummary(overallRiskLevel, leadDomain, topPatterns)
+  const overallRiskLevel = calculateOverallRisk(contourResults, safetyFlags)
+  const { briefConclusion, narrativeText } = generateClinicalSummary(priority, leadingContour, contourResults)
 
   return {
     indicatorResults,
-    domainResults,
+    contourResults,
+    leadingContour,
     patternMatches,
-    topPatterns,
+    priority,
     notEvaluatedPatterns,
-    leadDomain,
     overallRiskLevel,
     briefConclusion,
     narrativeText,
